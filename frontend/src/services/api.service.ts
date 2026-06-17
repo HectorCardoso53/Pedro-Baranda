@@ -1,8 +1,8 @@
 import api from '@/lib/api'
 import type {
   Proprietario, Regiao, Projeto, Area, Quadra, Lote, Cliente,
-  Venda, Parcela, Pagamento, Promissoria, MovimentacaoFinanceira,
-  Repasse, DashboardStats, ApiResponse
+  Venda, Parcela, Pagamento,
+  DashboardStats, ApiResponse
 } from '@/types'
 
 function extract<T>(res: { data: ApiResponse<T> }): T {
