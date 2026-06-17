@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #000; line-height: 1.6; }
+  .header { text-align: center; border-bottom: 2px solid #1e3a6e; padding-bottom: 15px; margin-bottom: 20px; }
+  .logo-text { font-size: 22pt; font-weight: bold; color: #1e3a6e; letter-spacing: 2px; }
+  .subtitle { font-size: 10pt; color: #555; }
+  h1 { text-align: center; font-size: 14pt; text-transform: uppercase; margin: 20px 0; color: #1e3a6e; }
+  h2 { font-size: 11pt; text-transform: uppercase; color: #1e3a6e; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin: 20px 0 10px; }
+  p { margin-bottom: 8px; text-align: justify; }
+  .clause { margin-bottom: 15px; }
+  .clause-title { font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+  table th { background: #1e3a6e; color: white; padding: 8px; text-align: left; }
+  table td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+  table tr:nth-child(even) td { background: #f8f9fa; }
+  .assinaturas { margin-top: 60px; display: flex; justify-content: space-between; }
+  .assinatura { text-align: center; width: 45%; }
+  .assinatura-linha { border-top: 1px solid #000; padding-top: 8px; margin-top: 50px; }
+  .valor { font-weight: bold; color: #16a34a; }
+  .rodape { margin-top: 40px; font-size: 9pt; text-align: center; color: #888; border-top: 1px solid #eee; padding-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo-text">FACILITA IMOBILIÁRIA</div>
+  <div class="subtitle">Gestão Patrimonial e Loteamentos</div>
+</div>
+
+<h1>Contrato de Compra e Venda de Imóvel</h1>
+
+<h2>Cláusula 1ª — Das Partes</h2>
+<div class="clause">
+  <p><strong>VENDEDORA:</strong> Facilita Imobiliária Ltda., administradora do imóvel conforme contrato operacional com o proprietário.</p>
+  <p><strong>COMPRADOR(A):</strong> {{cliente.nome}}, CPF/CNPJ: {{cliente.cpfCnpj}}, RG: {{cliente.rg}}, Estado Civil: {{cliente.estadoCivil}}, Profissão: {{cliente.profissao}}, residente e domiciliado à {{cliente.endereco.logradouro}}, nº {{cliente.endereco.numero}}, {{cliente.endereco.bairro}}, {{cliente.endereco.cidade}}/{{cliente.endereco.estado}}, CEP: {{cliente.endereco.cep}}.</p>
+</div>
+
+<h2>Cláusula 2ª — Do Objeto</h2>
+<div class="clause">
+  <p>O imóvel objeto do presente contrato é o <strong>Lote Nº {{lote.numero}}</strong>, localizado na <strong>Quadra {{lote.quadraNome}}</strong>, pertencente ao <strong>Projeto {{lote.projetoNome}}</strong>, com área de <strong>{{lote.area}} m²</strong>, conforme memorial descritivo e documentação anexa.</p>
+</div>
+
+<h2>Cláusula 3ª — Do Preço e Forma de Pagamento</h2>
+<div class="clause">
+  <table>
+    <tr><th>Item</th><th>Valor</th></tr>
+    <tr><td>Valor Total do Imóvel</td><td class="valor">R$ {{venda.valor}}</td></tr>
+    <tr><td>Entrada</td><td class="valor">R$ {{venda.entrada}}</td></tr>
+    <tr><td>Saldo Financiado</td><td class="valor">R$ {{venda.saldo}}</td></tr>
+    <tr><td>Número de Parcelas</td><td><strong>{{venda.numeroParcelas}}x de R$ {{venda.valorParcela}}</strong></td></tr>
+    <tr><td>Vencimento das Parcelas</td><td>Todo dia {{venda.diaVencimento}} de cada mês</td></tr>
+    <tr><td>Primeiro Vencimento</td><td>{{venda.primeiroVencimento}}</td></tr>
+  </table>
+  <p>As parcelas serão representadas por Cédulas de Crédito Imobiliário (promissórias) emitidas na data da assinatura deste contrato.</p>
+</div>
+
+<h2>Cláusula 4ª — Da Inadimplência</h2>
+<div class="clause">
+  <p>O atraso no pagamento de qualquer parcela acarretará multa de 2% (dois por cento) sobre o valor em atraso, acrescido de juros moratórios de 1% (um por cento) ao mês, calculados proporcionalmente ao número de dias de atraso.</p>
+</div>
+
+<h2>Cláusula 5ª — Da Posse</h2>
+<div class="clause">
+  <p>A posse do imóvel será transferida ao comprador somente após a quitação integral do presente contrato e lavratura de escritura definitiva de compra e venda no Cartório de Registro de Imóveis competente.</p>
+</div>
+
+<h2>Cláusula 6ª — Do Foro</h2>
+<div class="clause">
+  <p>Fica eleito o foro da comarca onde está localizado o imóvel para dirimir quaisquer dúvidas ou litígios decorrentes do presente instrumento, com renúncia expressa a qualquer outro, por mais privilegiado que seja.</p>
+</div>
+
+<p style="text-align: center; margin: 30px 0;">Local e Data: ___________________________________, {{dataGeracao}}</p>
+
+<div class="assinaturas">
+  <div class="assinatura">
+    <div class="assinatura-linha">
+      <strong>VENDEDORA</strong><br>Facilita Imobiliária
+    </div>
+  </div>
+  <div class="assinatura">
+    <div class="assinatura-linha">
+      <strong>COMPRADOR(A)</strong><br>{{cliente.nome}}<br>CPF: {{cliente.cpfCnpj}}
+    </div>
+  </div>
+</div>
+
+<div class="rodape">
+  Documento gerado eletronicamente em {{dataGeracao}} — Facilita Imobiliária | ID: {{venda.id}}
+</div>
+
+</body>
+</html>

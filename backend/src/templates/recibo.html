@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 11pt; color: #000; }
+  .recibo { border: 2px solid #1e3a6e; padding: 25px; margin: 10px; }
+  .header { text-align: center; border-bottom: 2px solid #1e3a6e; padding-bottom: 15px; margin-bottom: 20px; }
+  .titulo { font-size: 18pt; font-weight: bold; color: #1e3a6e; }
+  .subtitulo { font-size: 10pt; color: #666; }
+  .numero-recibo { float: right; font-size: 10pt; color: #666; }
+  .valor-box { text-align: center; margin: 20px 0; }
+  .valor-destaque { font-size: 24pt; font-weight: bold; color: #16a34a; }
+  .campo { margin: 10px 0; border-bottom: 1px dotted #ccc; padding-bottom: 8px; }
+  .campo label { font-weight: bold; font-size: 9pt; color: #666; }
+  .campo span { font-size: 11pt; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0; }
+  .declaracao { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 20px 0; font-size: 10pt; text-align: justify; }
+  .assinaturas { display: flex; justify-content: space-around; margin-top: 50px; }
+  .assinatura { text-align: center; }
+  .assinatura-linha { border-top: 1px solid #000; padding-top: 8px; min-width: 200px; }
+  .rodape { font-size: 8pt; color: #999; text-align: center; margin-top: 20px; }
+  .sinal-verde { color: #16a34a; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<div class="recibo">
+  <div style="overflow: hidden;">
+    <div class="numero-recibo">Recibo Nº: {{pagamento.id}}</div>
+    <div class="header">
+      <div class="titulo">FACILITA IMOBILIÁRIA</div>
+      <div class="subtitulo">Recibo de Pagamento</div>
+    </div>
+  </div>
+
+  <div class="valor-box">
+    <div style="font-size: 10pt; color: #666;">VALOR RECEBIDO</div>
+    <div class="valor-destaque">R$ {{pagamento.valor}}</div>
+    <div class="sinal-verde">✓ PAGAMENTO CONFIRMADO</div>
+  </div>
+
+  <div class="declaracao">
+    Recebemos de <strong>{{cliente.nome}}</strong>, CPF/CNPJ <strong>{{cliente.cpfCnpj}}</strong>, a quantia de <strong>R$ {{pagamento.valor}}</strong> referente ao pagamento da <strong>Parcela Nº {{parcela.numero}}</strong>, com vencimento em <strong>{{parcela.vencimento}}</strong>, relativo ao contrato de compra e venda de imóvel ID: {{pagamento.vendaId}}.
+  </div>
+
+  <div class="grid-2">
+    <div class="campo">
+      <label>Data do Pagamento</label><br>
+      <span>{{pagamento.dataPagamento}}</span>
+    </div>
+    <div class="campo">
+      <label>Forma de Pagamento</label><br>
+      <span>{{pagamento.formaPagamento}}</span>
+    </div>
+    <div class="campo">
+      <label>Valor Principal</label><br>
+      <span>R$ {{pagamento.valorPrincipal}}</span>
+    </div>
+    <div class="campo">
+      <label>Juros / Multa</label><br>
+      <span>R$ {{pagamento.juros}} / R$ {{pagamento.multa}}</span>
+    </div>
+  </div>
+
+  {{#if pagamento.observacoes}}
+  <div class="campo">
+    <label>Observações</label><br>
+    <span>{{pagamento.observacoes}}</span>
+  </div>
+  {{/if}}
+
+  <div class="assinaturas">
+    <div class="assinatura">
+      <div class="assinatura-linha">
+        <strong>FACILITA IMOBILIÁRIA</strong><br>
+        Recebedor
+      </div>
+    </div>
+    <div class="assinatura">
+      <div class="assinatura-linha">
+        <strong>{{cliente.nome}}</strong><br>
+        Pagador
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    Recibo gerado em {{dataGeracao}} | ID: {{pagamento.id}} | Facilita Imobiliária
+  </div>
+</div>
+
+</body>
+</html>
