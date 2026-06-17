@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 11pt; color: #000; }
+  .promissoria { border: 2px solid #1e3a6e; padding: 20px; margin: 10px; page-break-inside: avoid; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1e3a6e; padding-bottom: 10px; margin-bottom: 15px; }
+  .titulo { font-size: 16pt; font-weight: bold; color: #1e3a6e; text-align: center; }
+  .numero { font-size: 10pt; color: #666; text-align: right; }
+  .valor-destaque { font-size: 20pt; font-weight: bold; color: #16a34a; text-align: center; border: 2px solid #16a34a; padding: 10px; margin: 15px 0; border-radius: 4px; }
+  .campo { margin: 8px 0; }
+  .campo label { font-weight: bold; font-size: 9pt; color: #666; display: block; }
+  .campo span { font-size: 11pt; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+  .pix-section { background: #f0f9f0; border: 1px solid #16a34a; border-radius: 6px; padding: 15px; margin: 15px 0; text-align: center; }
+  .pix-title { font-weight: bold; color: #16a34a; margin-bottom: 10px; }
+  .pix-qrcode { display: flex; justify-content: center; margin: 10px 0; }
+  .pix-qrcode img { width: 150px; height: 150px; }
+  .pix-copiaecola { font-size: 8pt; word-break: break-all; background: #fff; padding: 5px; border-radius: 3px; border: 1px solid #ccc; margin-top: 8px; }
+  .assinatura { border-top: 1px solid #000; margin-top: 30px; padding-top: 8px; text-align: center; }
+  .rodape { font-size: 8pt; color: #999; text-align: center; margin-top: 10px; }
+  .status-tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 9pt; font-weight: bold; }
+  .status-ativa { background: #dcfce7; color: #16a34a; }
+</style>
+</head>
+<body>
+
+<div class="promissoria">
+  <div class="header">
+    <div>
+      <div style="font-size:14pt; font-weight:bold; color:#1e3a6e;">FACILITA IMOBILIÁRIA</div>
+      <div style="font-size:9pt; color:#666;">Cédula de Crédito Imobiliário</div>
+    </div>
+    <div class="numero">
+      Parcela: <strong>{{parcela.numero}}</strong><br>
+      Vencimento: <strong>{{vencimentoFormatado}}</strong><br>
+      <span class="status-tag status-ativa">ATIVA</span>
+    </div>
+  </div>
+
+  <div class="valor-destaque">
+    R$ {{parcela.valor}}
+  </div>
+
+  <div class="grid-2">
+    <div class="campo">
+      <label>DEVEDOR</label>
+      <span>{{cliente.nome}}</span>
+    </div>
+    <div class="campo">
+      <label>CPF/CNPJ</label>
+      <span>{{cliente.cpfCnpj}}</span>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="campo">
+      <label>IMÓVEL (LOTE)</label>
+      <span>Contrato {{venda.id}}</span>
+    </div>
+    <div class="campo">
+      <label>PARCELA Nº</label>
+      <span>{{parcela.numero}} de {{venda.numeroParcelas}}</span>
+    </div>
+    <div class="campo">
+      <label>DATA EMISSÃO</label>
+      <span>{{dataGeracao}}</span>
+    </div>
+  </div>
+
+  {{#if pixQrCode}}
+  <div class="pix-section">
+    <div class="pix-title">🔹 PAGUE VIA PIX</div>
+    <div class="pix-qrcode">
+      <img src="{{pixQrCode}}" alt="QR Code PIX" />
+    </div>
+    <div style="font-size:9pt; color:#555;">Escaneie o QR Code ou use a chave Pix Copia e Cola:</div>
+    <div class="pix-copiaecola">{{pixCopiaECola}}</div>
+  </div>
+  {{/if}}
+
+  <div class="assinatura">
+    <p style="margin-bottom: 30px;">Por este instrumento particular, o devedor acima qualificado promete pagar a quantia acima à Facilita Imobiliária ou à sua ordem, na data de vencimento indicada.</p>
+    ___________________________________________<br>
+    <strong>{{cliente.nome}}</strong><br>
+    CPF: {{cliente.cpfCnpj}}
+  </div>
+
+  <div class="rodape">
+    ID: {{parcela.id}} | Gerado em {{dataGeracao}} | Facilita Imobiliária
+  </div>
+</div>
+
+</body>
+</html>
