@@ -22,14 +22,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: facilita-frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     ports:
-      - "5173:5173"
-    environment:
-      - CHOKIDAR_USEPOLLING=true
-      - WATCHPACK_POLLING=true
+      - "5173:80"
     networks:
       - facilita-network
     depends_on:
