@@ -1,67 +1,49 @@
-import { db } from '../firebase/admin'
-import { v4 as uuid } from 'uuid'
+import prisma from '../lib/prisma'
 import { BaseService } from './base.service'
 
 export class LotesService extends BaseService {
   constructor() { super('lotes') }
 
   async listarDisponiveis(projetoId?: string) {
-    let query: FirebaseFirestore.Query = this.ref().where('status', '==', 'disponivel')
-    if (projetoId) query = query.where('projetoId', '==', projetoId)
-    const snap = await query.orderBy('criadoEm', 'desc').get()
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const where: any = { status: 'disponivel' }
+    if (projetoId) where.projetoId = projetoId
+    return prisma.lote.findMany({ where, orderBy: { criadoEm: 'desc' } })
   }
 
   async criar(data: Record<string, unknown>) {
-    const agora = new Date().toISOString()
-    return super.criar({
-      ...data,
-      status: 'disponivel',
-      vendaId: null,
-      criadoEm: agora,
-      atualizadoEm: agora,
-    })
+    return super.criar({ ...data, status: 'disponivel', vendaId: null })
   }
 
   async criarEmLote(lotes: Array<{
     quadraId: string; projetoId: string; proprietarioId: string
     numero: string; area: number; valorBase: number
   }>) {
-    const agora = new Date().toISOString()
-    const batch = db.batch()
-    const criados = []
-
-    for (const lote of lotes) {
-      const id = uuid()
-      const data = {
-        ...lote,
-        status: 'disponivel',
-        observacoes: null,
-        vendaId: null,
-        criadoEm: agora,
-        atualizadoEm: agora,
-      }
-      batch.set(this.ref().doc(id), data)
-      criados.push({ id, ...data })
-    }
-
-    await batch.commit()
+    const criados = await prisma.$transaction(
+      lotes.map((lote) =>
+        prisma.lote.create({
+          data: {
+            ...lote,
+            status: 'disponivel',
+            observacoes: null,
+            vendaId: null,
+          },
+        })
+      )
+    )
     return criados
   }
 
   async alterarStatus(id: string, status: string, motivo?: string) {
-    const doc = await this.ref().doc(id).get()
-    if (!doc.exists) throw Object.assign(new Error('Lote não encontrado'), { statusCode: 404 })
+    const lote = await prisma.lote.findUnique({ where: { id } })
+    if (!lote) throw Object.assign(new Error('Lote não encontrado'), { statusCode: 404 })
 
-    const lote = doc.data()!
     if (lote.status === 'vendido' && status !== 'disponivel') {
       throw Object.assign(new Error('Lote vendido só pode ser liberado via cancelamento/distrato'), { statusCode: 409 })
     }
 
-    await this.ref().doc(id).update({
-      status,
-      motivoBloqueio: motivo || null,
-      atualizadoEm: new Date().toISOString(),
+    await prisma.lote.update({
+      where: { id },
+      data: { status: status as any, motivoBloqueio: motivo || null },
     })
 
     return { id, status }

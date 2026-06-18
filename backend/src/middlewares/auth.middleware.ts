@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
-import { auth, db } from '../firebase/admin'
+import jwt from 'jsonwebtoken'
+import prisma from '../lib/prisma'
 import { errorResponse } from '../utils/response'
 import logger from '../utils/logger'
 
@@ -21,24 +22,32 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
     }
 
     const token = authHeader.split('Bearer ')[1]
-    const decoded = await auth.verifyIdToken(token)
-
-    const userDoc = await db.collection('usuarios').doc(decoded.uid).get()
-    if (!userDoc.exists) {
-      return errorResponse(res, 'Usuário não encontrado no sistema', 401)
+    const secret = process.env.JWT_SECRET
+    if (!secret) {
+      return errorResponse(res, 'Configuração de JWT ausente no servidor', 500)
     }
 
-    const userData = userDoc.data()!
-    if (!userData.ativo) {
+    let decoded: { sub: string; email: string; role: string; nome: string; proprietarioId?: string }
+    try {
+      decoded = jwt.verify(token, secret) as typeof decoded
+    } catch {
+      return errorResponse(res, 'Token inválido ou expirado', 401)
+    }
+
+    const usuario = await prisma.usuario.findUnique({ where: { id: decoded.sub } })
+    if (!usuario) {
+      return errorResponse(res, 'Usuário não encontrado no sistema', 401)
+    }
+    if (!usuario.ativo) {
       return errorResponse(res, 'Usuário inativo', 403)
     }
 
     req.user = {
-      uid: decoded.uid,
-      email: decoded.email!,
-      role: userData.role,
-      nome: userData.nome,
-      proprietarioId: userData.proprietarioId,
+      uid: usuario.id,
+      email: usuario.email,
+      role: usuario.role,
+      nome: usuario.nome,
+      proprietarioId: usuario.proprietarioId ?? undefined,
     }
 
     next()

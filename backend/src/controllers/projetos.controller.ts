@@ -1,7 +1,7 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { BaseService } from '../services/base.service'
-import { db } from '../firebase/admin'
+import prisma from '../lib/prisma'
 import { successResponse } from '../utils/response'
 
 const service = new BaseService('projetos')
@@ -23,12 +23,10 @@ export class ProjetosController {
 
   async resumo(req: AuthRequest, res: Response) {
     const projeto = await service.buscar(req.params.id)
-    const [lotesSnap, vendasSnap] = await Promise.all([
-      db.collection('lotes').where('projetoId', '==', req.params.id).get(),
-      db.collection('vendas').where('projetoId', '==', req.params.id).get(),
+    const [lotes, vendas] = await Promise.all([
+      prisma.lote.findMany({ where: { projetoId: req.params.id } }),
+      prisma.venda.findMany({ where: { projetoId: req.params.id } }),
     ])
-    const lotes = lotesSnap.docs.map((d) => d.data())
-    const vendas = vendasSnap.docs.map((d) => d.data())
     return successResponse(res, {
       ...projeto,
       totalLotes: lotes.length,

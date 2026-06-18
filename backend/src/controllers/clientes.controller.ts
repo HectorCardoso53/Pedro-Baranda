@@ -1,7 +1,7 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { BaseService } from '../services/base.service'
-import { db } from '../firebase/admin'
+import prisma from '../lib/prisma'
 import { successResponse } from '../utils/response'
 
 const service = new BaseService('clientes')
@@ -18,8 +18,8 @@ export class ClientesController {
   }
 
   async vendas(req: AuthRequest, res: Response) {
-    const snap = await db.collection('vendas').where('clienteId', '==', req.params.id).get()
-    return successResponse(res, snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    const vendas = await prisma.venda.findMany({ where: { clienteId: req.params.id } })
+    return successResponse(res, vendas)
   }
 
   async criar(req: AuthRequest, res: Response) {

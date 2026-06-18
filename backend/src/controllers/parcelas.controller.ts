@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
-import { db } from '../firebase/admin'
+import prisma from '../lib/prisma'
 import { gerarPDF } from '../utils/pdf'
 import { gerarPixCopiaECola, gerarQRCodeBase64 } from '../utils/pix'
 import { successResponse } from '../utils/response'
@@ -8,59 +8,55 @@ import { format } from 'date-fns'
 
 export class ParcelasController {
   async listar(req: AuthRequest, res: Response) {
-    let query: FirebaseFirestore.Query = db.collection('parcelas')
+    const where: Record<string, any> = {}
     const { vendaId, clienteId, status, projetoId } = req.query
-    if (vendaId) query = query.where('vendaId', '==', vendaId)
-    if (clienteId) query = query.where('clienteId', '==', clienteId)
-    if (status) query = query.where('status', '==', status)
-    if (projetoId) query = query.where('projetoId', '==', projetoId)
-    const snap = await query.orderBy('vencimento').get()
-    return successResponse(res, snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    if (vendaId) where.vendaId = vendaId
+    if (clienteId) where.clienteId = clienteId
+    if (status) where.status = status
+    if (projetoId) where.projetoId = projetoId
+    const parcelas = await prisma.parcela.findMany({ where, orderBy: { vencimento: 'asc' } })
+    return successResponse(res, parcelas)
   }
 
   async vencidas(_req: AuthRequest, res: Response) {
-    const snap = await db.collection('parcelas').where('status', '==', 'vencida').orderBy('vencimento').get()
-    return successResponse(res, snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    const parcelas = await prisma.parcela.findMany({
+      where: { status: 'vencida' },
+      orderBy: { vencimento: 'asc' },
+    })
+    return successResponse(res, parcelas)
   }
 
   async buscar(req: AuthRequest, res: Response) {
-    const doc = await db.collection('parcelas').doc(req.params.id).get()
-    if (!doc.exists) return successResponse(res, null)
-    return successResponse(res, { id: doc.id, ...doc.data() })
+    const parcela = await prisma.parcela.findUnique({ where: { id: req.params.id } })
+    return successResponse(res, parcela)
   }
 
   async atualizar(req: AuthRequest, res: Response) {
-    await db.collection('parcelas').doc(req.params.id).update({
-      ...req.body,
-      atualizadoEm: new Date().toISOString(),
+    const parcela = await prisma.parcela.update({
+      where: { id: req.params.id },
+      data: req.body,
     })
-    const doc = await db.collection('parcelas').doc(req.params.id).get()
-    return successResponse(res, { id: doc.id, ...doc.data() })
+    return successResponse(res, parcela)
   }
 
   async gerarPromissoria(req: AuthRequest, res: Response) {
-    const parcelaDoc = await db.collection('parcelas').doc(req.params.id).get()
-    if (!parcelaDoc.exists) throw Object.assign(new Error('Parcela não encontrada'), { statusCode: 404 })
+    const parcela = await prisma.parcela.findUnique({ where: { id: req.params.id } })
+    if (!parcela) throw Object.assign(new Error('Parcela não encontrada'), { statusCode: 404 })
 
-    const parcela = parcelaDoc.data()!
-    const [vendaDoc, clienteDoc] = await Promise.all([
-      db.collection('vendas').doc(parcela.vendaId).get(),
-      db.collection('clientes').doc(parcela.clienteId).get(),
+    const [venda, cliente] = await Promise.all([
+      prisma.venda.findUnique({ where: { id: parcela.vendaId } }),
+      parcela.clienteId ? prisma.cliente.findUnique({ where: { id: parcela.clienteId } }) : null,
     ])
 
-    const venda = vendaDoc.data()!
-    const cliente = clienteDoc.data()!
-
-    // Gerar PIX
     let pixQrCode = null
     let pixCopiaECola = null
-    const proprietarioDoc = await db.collection('proprietarios').doc(parcela.proprietarioId).get()
-    if (proprietarioDoc.exists) {
-      const prop = proprietarioDoc.data()!
-      if (prop.pixChave) {
+
+    if (parcela.proprietarioId) {
+      const proprietario = await prisma.proprietario.findUnique({ where: { id: parcela.proprietarioId } })
+      if (proprietario?.pixChave) {
         pixCopiaECola = gerarPixCopiaECola({
-          chave: prop.pixChave,
-          nome: prop.nome,
+          chave: proprietario.pixChave,
+          nome: proprietario.nome,
           cidade: process.env.PIX_CIDADE || 'Cidade',
           valor: parcela.valor,
           txid: req.params.id.substring(0, 25),
@@ -80,29 +76,35 @@ export class ParcelasController {
       vencimentoFormatado: format(new Date(parcela.vencimento + 'T00:00:00'), 'dd/MM/yyyy'),
     }, `promissoria-${req.params.id}.pdf`)
 
-    const agora = new Date().toISOString()
-    await db.collection('parcelas').doc(req.params.id).update({ promissoriaUrl: pdfUrl, atualizadoEm: agora })
+    const agora = new Date()
+    await prisma.parcela.update({
+      where: { id: req.params.id },
+      data: { promissoriaUrl: pdfUrl },
+    })
 
-    // Criar/atualizar promissória
-    const promSnap = await db.collection('promissorias').where('parcelaId', '==', req.params.id).get()
-    if (promSnap.empty) {
-      await db.collection('promissorias').add({
-        parcelaId: req.params.id,
-        vendaId: parcela.vendaId,
-        clienteId: parcela.clienteId,
-        proprietarioId: parcela.proprietarioId,
-        numero: parcela.numero,
-        valor: parcela.valor,
-        vencimento: parcela.vencimento,
-        status: 'ativa',
-        pdfUrl,
-        pixQrCode,
-        pixCopiaECola,
-        criadoEm: agora,
-        atualizadoEm: agora,
+    // Criar ou atualizar promissória
+    const existente = await prisma.promissoria.findFirst({ where: { parcelaId: req.params.id } })
+    if (!existente) {
+      await prisma.promissoria.create({
+        data: {
+          parcelaId: req.params.id,
+          vendaId: parcela.vendaId,
+          clienteId: parcela.clienteId,
+          proprietarioId: parcela.proprietarioId,
+          numero: parcela.numero,
+          valor: parcela.valor,
+          vencimento: parcela.vencimento,
+          status: 'ativa',
+          pdfUrl,
+          pixQrCode,
+          pixCopiaECola,
+        },
       })
     } else {
-      await promSnap.docs[0].ref.update({ pdfUrl, pixQrCode, pixCopiaECola, atualizadoEm: agora })
+      await prisma.promissoria.update({
+        where: { id: existente.id },
+        data: { pdfUrl, pixQrCode, pixCopiaECola },
+      })
     }
 
     return successResponse(res, { url: pdfUrl, pixQrCode, pixCopiaECola }, 'Promissória gerada com sucesso')

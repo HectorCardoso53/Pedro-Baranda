@@ -1,30 +1,24 @@
-import { db } from '../firebase/admin'
-import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns'
+import prisma from '../lib/prisma'
+import { format, startOfMonth, endOfMonth } from 'date-fns'
 
 export class DashboardService {
   async geral() {
-    const [lotesSnap, vendasSnap, parcelasSnap, repassesSnap] = await Promise.all([
-      db.collection('lotes').get(),
-      db.collection('vendas').get(),
-      db.collection('parcelas').where('status', '==', 'vencida').get(),
-      db.collection('movimentacoesFinanceiras')
-        .where('tipo', '==', 'repasse')
-        .where('status', '==', 'pendente')
-        .get(),
+    const [lotes, vendas, inadimplentes, repassesPendentes] = await Promise.all([
+      prisma.lote.findMany(),
+      prisma.venda.findMany(),
+      prisma.parcela.count({ where: { status: 'vencida' } }),
+      prisma.repasse.count({ where: { status: 'pendente' } }),
     ])
 
-    const lotes = lotesSnap.docs.map((d) => d.data())
-    const vendas = vendasSnap.docs.map((d) => d.data())
-
     const mesAtual = format(new Date(), 'yyyy-MM')
-    const vendasMes = vendas.filter((v) => v.criadoEm?.startsWith(mesAtual)).length
+    const vendasMes = vendas.filter((v) => v.criadoEm.toISOString().startsWith(mesAtual)).length
 
-    const pagamentosMes = await db.collection('pagamentos')
-      .where('dataPagamento', '>=', format(startOfMonth(new Date()), 'yyyy-MM-dd'))
-      .where('dataPagamento', '<=', format(endOfMonth(new Date()), 'yyyy-MM-dd'))
-      .get()
-
-    const receitaMes = pagamentosMes.docs.reduce((acc, d) => acc + (d.data().valor || 0), 0)
+    const inicio = format(startOfMonth(new Date()), 'yyyy-MM-dd')
+    const fim = format(endOfMonth(new Date()), 'yyyy-MM-dd')
+    const pagamentosMes = await prisma.pagamento.findMany({
+      where: { dataPagamento: { gte: inicio, lte: fim } },
+    })
+    const receitaMes = pagamentosMes.reduce((acc, p) => acc + (p.valor || 0), 0)
 
     return {
       totalLotes: lotes.length,
@@ -37,8 +31,8 @@ export class DashboardService {
       vendasQuitadas: vendas.filter((v) => v.status === 'quitada').length,
       vendasMes,
       receitaMes,
-      inadimplentes: parcelasSnap.size,
-      repassesPendentes: repassesSnap.size,
+      inadimplentes,
+      repassesPendentes,
     }
   }
 
@@ -49,14 +43,14 @@ export class DashboardService {
     for (let i = 5; i >= 0; i--) {
       const mes = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)
       const mesStr = format(mes, 'yyyy-MM')
-      const snap = await db.collection('vendas')
-        .where('status', 'in', ['ativa', 'quitada'])
-        .get()
-      const vendasMes = snap.docs.filter((d) => d.data().criadoEm?.startsWith(mesStr))
+      const vendas = await prisma.venda.findMany({
+        where: { status: { in: ['ativa', 'quitada'] } },
+      })
+      const vendasMes = vendas.filter((v) => v.criadoEm.toISOString().startsWith(mesStr))
       meses.push({
         mes: format(mes, 'MMM/yy'),
         total: vendasMes.length,
-        valor: vendasMes.reduce((acc, d) => acc + (d.data().valor || 0), 0),
+        valor: vendasMes.reduce((acc, v) => acc + (v.valor || 0), 0),
       })
     }
 
@@ -64,9 +58,7 @@ export class DashboardService {
   }
 
   async lotesStatus() {
-    const snap = await db.collection('lotes').get()
-    const lotes = snap.docs.map((d) => d.data())
-
+    const lotes = await prisma.lote.findMany()
     return [
       { status: 'Disponível', total: lotes.filter((l) => l.status === 'disponivel').length, fill: '#16a34a' },
       { status: 'Vendido', total: lotes.filter((l) => l.status === 'vendido').length, fill: '#1e3a6e' },
@@ -83,11 +75,10 @@ export class DashboardService {
       const mes = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)
       const inicio = format(startOfMonth(mes), 'yyyy-MM-dd')
       const fim = format(endOfMonth(mes), 'yyyy-MM-dd')
-      const snap = await db.collection('pagamentos')
-        .where('dataPagamento', '>=', inicio)
-        .where('dataPagamento', '<=', fim)
-        .get()
-      const receita = snap.docs.reduce((acc, d) => acc + (d.data().valor || 0), 0)
+      const pagamentos = await prisma.pagamento.findMany({
+        where: { dataPagamento: { gte: inicio, lte: fim } },
+      })
+      const receita = pagamentos.reduce((acc, p) => acc + (p.valor || 0), 0)
       meses.push({ mes: format(mes, 'MMM/yy'), receita })
     }
 
@@ -95,10 +86,10 @@ export class DashboardService {
   }
 
   async inadimplencia() {
-    const snap = await db.collection('parcelas').where('status', '==', 'vencida').get()
+    const parcelas = await prisma.parcela.findMany({ where: { status: 'vencida' } })
     return {
-      total: snap.size,
-      valor: snap.docs.reduce((acc, d) => acc + (d.data().valor || 0), 0),
+      total: parcelas.length,
+      valor: parcelas.reduce((acc, p) => acc + (p.valor || 0), 0),
     }
   }
 }

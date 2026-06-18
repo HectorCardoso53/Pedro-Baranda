@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
-import { db } from '../firebase/admin'
+import prisma from '../lib/prisma'
 import { successResponse } from '../utils/response'
 
 export class PainelProprietarioController {
@@ -12,21 +12,13 @@ export class PainelProprietarioController {
 
   async resumo(req: AuthRequest, res: Response) {
     const proprietarioId = this.getProprietarioId(req)
-    const [lotesSnap, vendasSnap, parcelasVencidasSnap, repassesSnap] = await Promise.all([
-      db.collection('lotes').where('proprietarioId', '==', proprietarioId).get(),
-      db.collection('vendas').where('proprietarioId', '==', proprietarioId).get(),
-      db.collection('parcelas').where('proprietarioId', '==', proprietarioId).where('status', '==', 'vencida').get(),
-      db.collection('repasses').where('proprietarioId', '==', proprietarioId).get(),
+    const [lotes, vendas, inadimplentes, repasses, parcelasPagas] = await Promise.all([
+      prisma.lote.findMany({ where: { proprietarioId } }),
+      prisma.venda.findMany({ where: { proprietarioId } }),
+      prisma.parcela.count({ where: { proprietarioId, status: 'vencida' } }),
+      prisma.repasse.findMany({ where: { proprietarioId } }),
+      prisma.parcela.findMany({ where: { proprietarioId, status: 'paga' } }),
     ])
-
-    const lotes = lotesSnap.docs.map((d) => d.data())
-    const vendas = vendasSnap.docs.map((d) => d.data())
-    const repasses = repassesSnap.docs.map((d) => d.data())
-
-    const parcelaspagas = await db.collection('parcelas')
-      .where('proprietarioId', '==', proprietarioId)
-      .where('status', '==', 'paga')
-      .get()
 
     return successResponse(res, {
       totalLotes: lotes.length,
@@ -34,8 +26,8 @@ export class PainelProprietarioController {
       lotesVendidos: lotes.filter((l) => l.status === 'vendido').length,
       totalVendas: vendas.length,
       vendasAtivas: vendas.filter((v) => v.status === 'ativa').length,
-      inadimplentes: parcelasVencidasSnap.size,
-      valorRecebido: parcelaspagas.docs.reduce((a, d) => a + (d.data().valor || 0), 0),
+      inadimplentes,
+      valorRecebido: parcelasPagas.reduce((a, p) => a + (p.valor || 0), 0),
       valorRepasses: repasses.reduce((a, r) => a + (r.totalRepasse || 0), 0),
       repassesPendentes: repasses.filter((r) => r.status === 'pendente').length,
     })
@@ -43,47 +35,54 @@ export class PainelProprietarioController {
 
   async lotes(req: AuthRequest, res: Response) {
     const proprietarioId = this.getProprietarioId(req)
-    const snap = await db.collection('lotes')
-      .where('proprietarioId', '==', proprietarioId)
-      .orderBy('criadoEm', 'desc')
-      .get()
-    return successResponse(res, snap.docs.map((d) => {
-      const data = d.data()
-      return { id: d.id, numero: data.numero, area: data.area, valorBase: data.valorBase, status: data.status, projetoId: data.projetoId }
-    }))
+    const lotes = await prisma.lote.findMany({
+      where: { proprietarioId },
+      orderBy: { criadoEm: 'desc' },
+    })
+    return successResponse(res, lotes.map((l) => ({
+      id: l.id,
+      numero: l.numero,
+      area: l.area,
+      valorBase: l.valorBase,
+      status: l.status,
+      projetoId: l.projetoId,
+    })))
   }
 
   async financeiro(req: AuthRequest, res: Response) {
     const proprietarioId = this.getProprietarioId(req)
-    const snap = await db.collection('movimentacoesFinanceiras')
-      .where('proprietarioId', '==', proprietarioId)
-      .orderBy('criadoEm', 'desc')
-      .limit(100)
-      .get()
-    return successResponse(res, snap.docs.map((d) => {
-      const data = d.data()
-      return { id: d.id, tipo: data.tipo, categoria: data.categoria, valor: data.valor, data: data.data, descricao: data.descricao }
-    }))
+    const movs = await prisma.movimentacaoFinanceira.findMany({
+      where: { proprietarioId },
+      orderBy: { criadoEm: 'desc' },
+      take: 100,
+    })
+    return successResponse(res, movs.map((m) => ({
+      id: m.id,
+      tipo: m.tipo,
+      categoria: m.categoria,
+      valor: m.valor,
+      data: m.data,
+      descricao: m.descricao,
+    })))
   }
 
   async repasses(req: AuthRequest, res: Response) {
     const proprietarioId = this.getProprietarioId(req)
-    const snap = await db.collection('repasses')
-      .where('proprietarioId', '==', proprietarioId)
-      .orderBy('criadoEm', 'desc')
-      .get()
-    return successResponse(res, snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    const repasses = await prisma.repasse.findMany({
+      where: { proprietarioId },
+      orderBy: { criadoEm: 'desc' },
+    })
+    return successResponse(res, repasses)
   }
 
   async inadimplencia(req: AuthRequest, res: Response) {
     const proprietarioId = this.getProprietarioId(req)
-    const snap = await db.collection('parcelas')
-      .where('proprietarioId', '==', proprietarioId)
-      .where('status', '==', 'vencida')
-      .get()
+    const parcelas = await prisma.parcela.findMany({
+      where: { proprietarioId, status: 'vencida' },
+    })
     return successResponse(res, {
-      total: snap.size,
-      valorTotal: snap.docs.reduce((a, d) => a + (d.data().valor || 0), 0),
+      total: parcelas.length,
+      valorTotal: parcelas.reduce((a, p) => a + (p.valor || 0), 0),
     })
   }
 }

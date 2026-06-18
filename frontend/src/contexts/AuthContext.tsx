@@ -1,11 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { User, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
 import api from '@/lib/api'
 import { Usuario } from '@/types'
 
 interface AuthContextType {
-  user: User | null
   profile: Usuario | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
@@ -20,44 +17,40 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Usuario | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser)
-      if (firebaseUser) {
-        try {
-          const res = await api.get('/auth/me')
-          setProfile(res.data.data)
-        } catch {
-          setProfile(null)
-        }
-      } else {
-        setProfile(null)
-      }
+    const token = localStorage.getItem('token')
+    if (!token) {
       setLoading(false)
-    })
-    return unsub
+      return
+    }
+    api.get('/auth/me')
+      .then((res) => setProfile(res.data.data))
+      .catch(() => {
+        localStorage.removeItem('token')
+        setProfile(null)
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   async function login(email: string, password: string) {
-    const cred = await signInWithEmailAndPassword(auth, email, password)
-    const token = await cred.user.getIdToken()
-    const res = await api.post('/auth/login', { idToken: token })
-    setProfile(res.data.data)
+    const res = await api.post('/auth/login', { email, senha: password })
+    const { token, usuario } = res.data.data
+    localStorage.setItem('token', token)
+    setProfile(usuario)
   }
 
   async function logout() {
-    await signOut(auth)
+    localStorage.removeItem('token')
     setProfile(null)
+    window.location.href = '/login'
   }
 
   const role = profile?.role
   return (
     <AuthContext.Provider value={{
-      user,
       profile,
       loading,
       login,
