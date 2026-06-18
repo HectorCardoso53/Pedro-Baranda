@@ -26,4 +26,4 @@ COPY . .
 
 EXPOSE 3333
 
-CMD sh -c "npx prisma migrate deploy && npx ts-node prisma/seed.ts; npm run dev"
+CMD sh -c "npx prisma db push --accept-data-loss && npx ts-node prisma/seed.ts; npm run dev"
