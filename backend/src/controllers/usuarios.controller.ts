@@ -1,42 +1,51 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
-import { db, auth } from '../firebase/admin'
+import prisma from '../lib/prisma'
 import { successResponse } from '../utils/response'
 
 export class UsuariosController {
   async listar(_req: AuthRequest, res: Response) {
-    const snap = await db.collection('usuarios').orderBy('criadoEm', 'desc').get()
-    return successResponse(res, snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    const usuarios = await prisma.usuario.findMany({
+      orderBy: { criadoEm: 'desc' },
+      select: { id: true, nome: true, email: true, role: true, ativo: true, proprietarioId: true, criadoEm: true, atualizadoEm: true, ultimoLogin: true },
+    })
+    return successResponse(res, usuarios)
   }
 
   async buscar(req: AuthRequest, res: Response) {
-    const doc = await db.collection('usuarios').doc(req.params.id).get()
-    if (!doc.exists) throw Object.assign(new Error('Usuário não encontrado'), { statusCode: 404 })
-    return successResponse(res, { id: doc.id, ...doc.data() })
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, nome: true, email: true, role: true, ativo: true, proprietarioId: true, criadoEm: true, atualizadoEm: true, ultimoLogin: true },
+    })
+    if (!usuario) throw Object.assign(new Error('Usuário não encontrado'), { statusCode: 404 })
+    return successResponse(res, usuario)
   }
 
   async atualizar(req: AuthRequest, res: Response) {
-    const agora = new Date().toISOString()
-    await db.collection('usuarios').doc(req.params.id).update({ ...req.body, atualizadoEm: agora })
-    const doc = await db.collection('usuarios').doc(req.params.id).get()
-    return successResponse(res, { id: doc.id, ...doc.data() })
+    const { senha: _senha, ...safeData } = req.body
+    const usuario = await prisma.usuario.update({
+      where: { id: req.params.id },
+      data: safeData,
+      select: { id: true, nome: true, email: true, role: true, ativo: true, proprietarioId: true, criadoEm: true, atualizadoEm: true },
+    })
+    return successResponse(res, usuario)
   }
 
   async toggleAtivo(req: AuthRequest, res: Response) {
-    const doc = await db.collection('usuarios').doc(req.params.id).get()
-    if (!doc.exists) throw Object.assign(new Error('Usuário não encontrado'), { statusCode: 404 })
-    const novoAtivo = !doc.data()!.ativo
-    await Promise.all([
-      db.collection('usuarios').doc(req.params.id).update({ ativo: novoAtivo, atualizadoEm: new Date().toISOString() }),
-      auth.updateUser(req.params.id, { disabled: !novoAtivo }),
-    ])
-    return successResponse(res, { ativo: novoAtivo })
+    const current = await prisma.usuario.findUnique({ where: { id: req.params.id } })
+    if (!current) throw Object.assign(new Error('Usuário não encontrado'), { statusCode: 404 })
+    const usuario = await prisma.usuario.update({
+      where: { id: req.params.id },
+      data: { ativo: !current.ativo },
+      select: { id: true, ativo: true },
+    })
+    return successResponse(res, { ativo: usuario.ativo })
   }
 
   async alterarRole(req: AuthRequest, res: Response) {
-    await db.collection('usuarios').doc(req.params.id).update({
-      role: req.body.role,
-      atualizadoEm: new Date().toISOString(),
+    await prisma.usuario.update({
+      where: { id: req.params.id },
+      data: { role: req.body.role },
     })
     return successResponse(res, null, 'Role atualizada com sucesso')
   }

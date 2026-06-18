@@ -1,23 +1,25 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
-import { db } from '../firebase/admin'
-import { v4 as uuid } from 'uuid'
+import prisma from '../lib/prisma'
 import { successResponse } from '../utils/response'
 
 export class FinanceiroController {
   async listarMovimentacoes(req: AuthRequest, res: Response) {
-    let query: FirebaseFirestore.Query = db.collection('movimentacoesFinanceiras')
+    const where: Record<string, any> = {}
     const { tipo, proprietarioId, projetoId } = req.query
-    if (tipo) query = query.where('tipo', '==', tipo)
-    if (proprietarioId) query = query.where('proprietarioId', '==', proprietarioId)
-    if (projetoId) query = query.where('projetoId', '==', projetoId)
-    const snap = await query.orderBy('criadoEm', 'desc').limit(200).get()
-    return successResponse(res, snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    if (tipo) where.tipo = tipo
+    if (proprietarioId) where.proprietarioId = proprietarioId
+    if (projetoId) where.projetoId = projetoId
+    const movs = await prisma.movimentacaoFinanceira.findMany({
+      where,
+      orderBy: { criadoEm: 'desc' },
+      take: 200,
+    })
+    return successResponse(res, movs)
   }
 
   async resumo(_req: AuthRequest, res: Response) {
-    const snap = await db.collection('movimentacoesFinanceiras').get()
-    const movs = snap.docs.map((d) => d.data())
+    const movs = await prisma.movimentacaoFinanceira.findMany()
     const entradas = movs.filter((m) => m.tipo === 'entrada').reduce((a, m) => a + (m.valor || 0), 0)
     const saidas = movs.filter((m) => m.tipo === 'saida').reduce((a, m) => a + (m.valor || 0), 0)
     const repasses = movs.filter((m) => m.tipo === 'repasse').reduce((a, m) => a + (m.valor || 0), 0)
@@ -25,74 +27,71 @@ export class FinanceiroController {
   }
 
   async listarRepasses(req: AuthRequest, res: Response) {
-    let query: FirebaseFirestore.Query = db.collection('repasses')
-    if (req.query.proprietarioId) query = query.where('proprietarioId', '==', req.query.proprietarioId)
-    if (req.query.status) query = query.where('status', '==', req.query.status)
-    const snap = await query.orderBy('criadoEm', 'desc').get()
-    return successResponse(res, snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    const where: Record<string, any> = {}
+    if (req.query.proprietarioId) where.proprietarioId = req.query.proprietarioId
+    if (req.query.status) where.status = req.query.status
+    const repasses = await prisma.repasse.findMany({ where, orderBy: { criadoEm: 'desc' } })
+    return successResponse(res, repasses)
   }
 
   async buscarRepasse(req: AuthRequest, res: Response) {
-    const doc = await db.collection('repasses').doc(req.params.id).get()
-    if (!doc.exists) throw Object.assign(new Error('Repasse não encontrado'), { statusCode: 404 })
-    return successResponse(res, { id: doc.id, ...doc.data() })
+    const repasse = await prisma.repasse.findUnique({ where: { id: req.params.id } })
+    if (!repasse) throw Object.assign(new Error('Repasse não encontrado'), { statusCode: 404 })
+    return successResponse(res, repasse)
   }
 
   async criarRepasse(req: AuthRequest, res: Response) {
-    const agora = new Date().toISOString()
-    const id = uuid()
-    const data = { id, ...req.body, status: 'pendente', criadoEm: agora, atualizadoEm: agora }
-    await db.collection('repasses').doc(id).set(data)
-    return successResponse(res, data, 'Repasse criado com sucesso', 201)
+    const repasse = await prisma.repasse.create({
+      data: { ...req.body, status: 'pendente' },
+    })
+    return successResponse(res, repasse, 'Repasse criado com sucesso', 201)
   }
 
   async pagarRepasse(req: AuthRequest, res: Response) {
-    const agora = new Date().toISOString()
-    await db.collection('repasses').doc(req.params.id).update({
-      status: 'pago',
-      pagamento: req.body.dataPagamento || agora,
-      comprovante: req.body.comprovante || null,
-      atualizadoEm: agora,
+    const repasse = await prisma.repasse.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'pago',
+        pagamento: req.body.dataPagamento || new Date().toISOString(),
+        comprovante: req.body.comprovante || null,
+        datPagamento: new Date(),
+      },
     })
 
-    const movId = uuid()
-    const repasseDoc = await db.collection('repasses').doc(req.params.id).get()
-    const repasse = repasseDoc.data()!
-    await db.collection('movimentacoesFinanceiras').doc(movId).set({
-      id: movId,
-      tipo: 'repasse',
-      categoria: 'repasse_proprietario',
-      descricao: `Repasse proprietário - ${repasse.periodo}`,
-      valor: repasse.totalRepasse,
-      data: req.body.dataPagamento || agora,
-      proprietarioId: repasse.proprietarioId,
-      repasseId: req.params.id,
-      registradoPor: req.user!.uid,
-      criadoEm: agora,
+    await prisma.movimentacaoFinanceira.create({
+      data: {
+        tipo: 'repasse',
+        categoria: 'repasse_proprietario',
+        descricao: `Repasse proprietário - ${repasse.periodo}`,
+        valor: repasse.totalRepasse,
+        data: req.body.dataPagamento || new Date().toISOString().split('T')[0],
+        proprietarioId: repasse.proprietarioId,
+        repasseId: req.params.id,
+        registradoPor: req.user!.uid,
+      },
     })
 
     return successResponse(res, null, 'Repasse registrado como pago')
   }
 
   async criarMovimentacao(req: AuthRequest, res: Response) {
-    const agora = new Date().toISOString()
-    const id = uuid()
-    const data = { id, ...req.body, registradoPor: req.user!.uid, criadoEm: agora }
-    await db.collection('movimentacoesFinanceiras').doc(id).set(data)
-    return successResponse(res, data, 'Movimentação registrada', 201)
+    const mov = await prisma.movimentacaoFinanceira.create({
+      data: { ...req.body, registradoPor: req.user!.uid },
+    })
+    return successResponse(res, mov, 'Movimentação registrada', 201)
   }
 
   async deletarMovimentacao(req: AuthRequest, res: Response) {
-    const doc = await db.collection('movimentacoesFinanceiras').doc(req.params.id).get()
-    if (!doc.exists) throw Object.assign(new Error('Movimentação não encontrada'), { statusCode: 404 })
-    await db.collection('movimentacoesFinanceiras').doc(req.params.id).delete()
+    const mov = await prisma.movimentacaoFinanceira.findUnique({ where: { id: req.params.id } })
+    if (!mov) throw Object.assign(new Error('Movimentação não encontrada'), { statusCode: 404 })
+    await prisma.movimentacaoFinanceira.delete({ where: { id: req.params.id } })
     return successResponse(res, null, 'Movimentação excluída com sucesso')
   }
 
   async deletarRepasse(req: AuthRequest, res: Response) {
-    const doc = await db.collection('repasses').doc(req.params.id).get()
-    if (!doc.exists) throw Object.assign(new Error('Repasse não encontrado'), { statusCode: 404 })
-    await db.collection('repasses').doc(req.params.id).delete()
+    const repasse = await prisma.repasse.findUnique({ where: { id: req.params.id } })
+    if (!repasse) throw Object.assign(new Error('Repasse não encontrado'), { statusCode: 404 })
+    await prisma.repasse.delete({ where: { id: req.params.id } })
     return successResponse(res, null, 'Repasse excluído com sucesso')
   }
 }

@@ -1,0 +1,389 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleUsuario {
+  admin
+  financeiro
+  atendimento
+  gerencia
+  proprietario
+}
+
+enum StatusLote {
+  disponivel
+  reservado
+  vendido
+  bloqueado
+}
+
+enum StatusVenda {
+  ativa
+  quitada
+  distratada
+  cancelada
+}
+
+enum StatusParcela {
+  pendente
+  paga
+  vencida
+  cancelada
+}
+
+enum StatusPromissoria {
+  ativa
+  quitada
+  vencida
+  cancelada
+}
+
+enum TipoMovimentacao {
+  entrada
+  saida
+  repasse
+}
+
+enum StatusRepasse {
+  pendente
+  pago
+}
+
+model Usuario {
+  id            String      @id @default(cuid())
+  nome          String
+  email         String      @unique
+  senha         String
+  role          RoleUsuario @default(atendimento)
+  ativo         Boolean     @default(true)
+  proprietarioId String?
+  ultimoLogin   DateTime?
+  criadoEm     DateTime    @default(now())
+  atualizadoEm DateTime    @updatedAt
+
+  proprietario  Proprietario? @relation(fields: [proprietarioId], references: [id])
+
+  @@map("usuarios")
+}
+
+model Proprietario {
+  id           String   @id @default(cuid())
+  nome         String
+  email        String?
+  cpfCnpj      String?
+  telefone     String?
+  pixChave     String?
+  pixTipo      String?
+  endereco     Json?
+  ativo        Boolean  @default(true)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  usuarios     Usuario[]
+  projetos     Projeto[]
+  lotes        Lote[]
+  repasses     Repasse[]
+
+  @@map("proprietarios")
+}
+
+model Regiao {
+  id           String   @id @default(cuid())
+  nome         String
+  estado       String?
+  cidade       String?
+  descricao    String?
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  projetos     Projeto[]
+
+  @@map("regioes")
+}
+
+model Projeto {
+  id               String   @id @default(cuid())
+  nome             String
+  descricao        String?
+  regiaoId         String?
+  proprietarioId   String?
+  totalLotes       Int      @default(0)
+  lotesDisponiveis Int      @default(0)
+  status           String   @default("ativo")
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
+
+  regiao       Regiao?      @relation(fields: [regiaoId], references: [id])
+  proprietario Proprietario? @relation(fields: [proprietarioId], references: [id])
+  areas        Area[]
+  quadras      Quadra[]
+  lotes        Lote[]
+  vendas       Venda[]
+  parcelas     Parcela[]
+  repasses     Repasse[]
+
+  @@map("projetos")
+}
+
+model Area {
+  id           String   @id @default(cuid())
+  nome         String
+  descricao    String?
+  projetoId    String
+  ativo        Boolean  @default(true)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  projeto      Projeto  @relation(fields: [projetoId], references: [id])
+  quadras      Quadra[]
+  lotes        Lote[]
+
+  @@map("areas")
+}
+
+model Quadra {
+  id           String   @id @default(cuid())
+  nome         String
+  descricao    String?
+  areaId       String?
+  projetoId    String
+  ativo        Boolean  @default(true)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  area         Area?    @relation(fields: [areaId], references: [id])
+  projeto      Projeto  @relation(fields: [projetoId], references: [id])
+  lotes        Lote[]
+
+  @@map("quadras")
+}
+
+model Lote {
+  id             String     @id @default(cuid())
+  numero         String
+  quadraId       String?
+  projetoId      String?
+  areaId         String?
+  proprietarioId String?
+  area           Float      @default(0)
+  valorBase      Float      @default(0)
+  status         StatusLote @default(disponivel)
+  vendaId        String?
+  observacoes    String?
+  motivoBloqueio String?
+  criadoEm      DateTime   @default(now())
+  atualizadoEm  DateTime   @updatedAt
+
+  quadra       Quadra?       @relation(fields: [quadraId], references: [id])
+  projeto      Projeto?      @relation(fields: [projetoId], references: [id])
+  areaRel      Area?         @relation(fields: [areaId], references: [id])
+  proprietario Proprietario? @relation(fields: [proprietarioId], references: [id])
+  vendas       Venda[]
+
+  @@map("lotes")
+}
+
+model Cliente {
+  id           String   @id @default(cuid())
+  nome         String
+  email        String?
+  cpfCnpj      String?
+  rg           String?
+  telefone     String?
+  celular      String?
+  estadoCivil  String?
+  profissao    String?
+  endereco     Json?
+  ativo        Boolean  @default(true)
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  vendas       Venda[]
+  parcelas     Parcela[]
+  pagamentos   Pagamento[]
+  promissorias Promissoria[]
+
+  @@map("clientes")
+}
+
+model Venda {
+  id                  String      @id @default(cuid())
+  loteId              String
+  clienteId           String
+  vendedorId          String?
+  proprietarioId      String?
+  projetoId           String?
+  quadraId            String?
+  valor               Float
+  entrada             Float       @default(0)
+  saldo               Float       @default(0)
+  numeroParcelas      Int         @default(0)
+  valorParcela        Float       @default(0)
+  diaVencimento       Int         @default(1)
+  primeiroVencimento  String?
+  dataVenda           DateTime    @default(now())
+  status              StatusVenda @default(ativa)
+  contratoUrl         String?
+  observacoes         String?
+  motivoCancelamento  String?
+  canceladoEm        DateTime?
+  motivoDistrato      String?
+  distratatoEm       DateTime?
+  quitadoEm          DateTime?
+  criadoEm           DateTime    @default(now())
+  atualizadoEm       DateTime    @updatedAt
+
+  lote         Lote     @relation(fields: [loteId], references: [id])
+  cliente      Cliente  @relation(fields: [clienteId], references: [id])
+  projeto      Projeto? @relation(fields: [projetoId], references: [id])
+  parcelas     Parcela[]
+  pagamentos   Pagamento[]
+  contratos    Contrato[]
+  promissorias Promissoria[]
+  movimentacoes MovimentacaoFinanceira[]
+
+  @@map("vendas")
+}
+
+model Parcela {
+  id             String        @id @default(cuid())
+  vendaId        String
+  loteId         String?
+  clienteId      String?
+  proprietarioId String?
+  projetoId      String?
+  numero         Int
+  valor          Float
+  valorPago      Float?
+  vencimento     String
+  pagamento      String?
+  status         StatusParcela @default(pendente)
+  juros          Float         @default(0)
+  multa          Float         @default(0)
+  desconto       Float         @default(0)
+  pagamentoId    String?
+  promissoriaUrl String?
+  criadoEm      DateTime      @default(now())
+  atualizadoEm  DateTime      @updatedAt
+
+  venda        Venda     @relation(fields: [vendaId], references: [id])
+  cliente      Cliente?  @relation(fields: [clienteId], references: [id])
+  projeto      Projeto?  @relation(fields: [projetoId], references: [id])
+  pagamentos   Pagamento[]
+  promissorias Promissoria[]
+
+  @@map("parcelas")
+}
+
+model Pagamento {
+  id             String   @id @default(cuid())
+  parcelaId      String
+  vendaId        String?
+  clienteId      String?
+  proprietarioId String?
+  projetoId      String?
+  valor          Float
+  valorPrincipal Float    @default(0)
+  juros          Float    @default(0)
+  multa          Float    @default(0)
+  diasAtraso     Int      @default(0)
+  dataPagamento  String
+  formaPagamento String?
+  comprovante    String?
+  observacoes    String?
+  registradoPor  String?
+  criadoEm      DateTime @default(now())
+
+  parcela      Parcela  @relation(fields: [parcelaId], references: [id])
+  venda        Venda?   @relation(fields: [vendaId], references: [id])
+  cliente      Cliente? @relation(fields: [clienteId], references: [id])
+
+  @@map("pagamentos")
+}
+
+model Contrato {
+  id        String   @id @default(cuid())
+  vendaId   String
+  tipo      String   @default("contrato")
+  url       String?
+  conteudo  String?
+  clienteId String?
+  criadoEm DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  venda     Venda    @relation(fields: [vendaId], references: [id])
+
+  @@map("contratos")
+}
+
+model Promissoria {
+  id             String            @id @default(cuid())
+  parcelaId      String
+  vendaId        String?
+  clienteId      String?
+  proprietarioId String?
+  numero         Int?
+  valor          Float?
+  vencimento     String?
+  status         StatusPromissoria @default(ativa)
+  pdfUrl         String?
+  pixQrCode      String?
+  pixCopiaECola  String?
+  conteudo       String?
+  criadoEm      DateTime          @default(now())
+  atualizadoEm  DateTime          @updatedAt
+
+  parcela      Parcela  @relation(fields: [parcelaId], references: [id])
+  venda        Venda?   @relation(fields: [vendaId], references: [id])
+  cliente      Cliente? @relation(fields: [clienteId], references: [id])
+
+  @@map("promissorias")
+}
+
+model MovimentacaoFinanceira {
+  id             String           @id @default(cuid())
+  tipo           TipoMovimentacao
+  categoria      String?
+  descricao      String?
+  valor          Float
+  data           String?
+  vendaId        String?
+  parcelaId      String?
+  pagamentoId    String?
+  repasseId      String?
+  proprietarioId String?
+  projetoId      String?
+  registradoPor  String?
+  criadoEm      DateTime         @default(now())
+
+  venda        Venda? @relation(fields: [vendaId], references: [id])
+
+  @@map("movimentacoes_financeiras")
+}
+
+model Repasse {
+  id                String        @id @default(cuid())
+  proprietarioId    String
+  projetoId         String?
+  periodo           String?
+  totalRecebido     Float         @default(0)
+  totalRepasse      Float         @default(0)
+  percentualRepasse Float         @default(0)
+  valor             Float         @default(0)
+  status            StatusRepasse @default(pendente)
+  pagamento         String?
+  datPagamento      DateTime?
+  comprovante       String?
+  criadoEm         DateTime      @default(now())
+  atualizadoEm     DateTime      @updatedAt
+
+  proprietario Proprietario @relation(fields: [proprietarioId], references: [id])
+  projeto      Projeto?     @relation(fields: [projetoId], references: [id])
+
+  @@map("repasses")
+}

@@ -8,7 +8,8 @@ RUN apk add --no-cache \
     harfbuzz \
     ca-certificates \
     ttf-freefont \
-    font-noto
+    font-noto \
+    openssl
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
@@ -18,8 +19,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
+COPY prisma ./prisma
+RUN npx prisma generate
+
 COPY . .
 
 EXPOSE 3333
 
-CMD ["npm", "run", "dev"]
+CMD sh -c "npx prisma migrate deploy && npx ts-node prisma/seed.ts; npm run dev"

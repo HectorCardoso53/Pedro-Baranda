@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: facilita-postgres
+    environment:
+      POSTGRES_USER: facilita
+      POSTGRES_PASSWORD: facilita123
+      POSTGRES_DB: facilita_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - facilita-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U facilita -d facilita_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -13,9 +33,14 @@ services:
       - "3333:3333"
     env_file:
       - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://facilita:facilita123@postgres:5432/facilita_db
     networks:
       - facilita-network
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     build:
@@ -47,3 +72,6 @@ services:
 networks:
   facilita-network:
     driver: bridge
+
+volumes:
+  postgres_data:

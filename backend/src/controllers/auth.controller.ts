@@ -7,9 +7,10 @@ const service = new AuthService()
 
 export class AuthController {
   async login(req: Request, res: Response) {
-    const { idToken } = req.body
-    if (!idToken) return errorResponse(res, 'Token Firebase obrigatório', 400)
-    const data = await service.login(idToken)
+    const { email, senha, password } = req.body
+    const senhaFinal = senha || password
+    if (!email || !senhaFinal) return errorResponse(res, 'E-mail e senha obrigatórios', 400)
+    const data = await service.login(email, senhaFinal)
     return successResponse(res, data, 'Login realizado com sucesso')
   }
 
