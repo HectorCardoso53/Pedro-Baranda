@@ -31,6 +31,11 @@ export default function MainLayout() {
 
   const isLoteamentoActive = loteamentoRoutes.some(r => location.pathname.startsWith(r))
 
+  const urlParams = new URLSearchParams(location.search)
+  const quadraIdNaUrl = urlParams.get('quadraId')
+  const projetoIdNaUrl = urlParams.get('projetoId')
+  const estaNaLotesDeQuadra = location.pathname.startsWith('/lotes') && !!quadraIdNaUrl
+
   useEffect(() => {
     if (!isLoteamentoActive) setOpenLevel(0)
   }, [isLoteamentoActive])
@@ -81,9 +86,11 @@ export default function MainLayout() {
             <NavLink to="/quadras" className={({ isActive }) => navCls(isActive, mini)} title="Quadras">
               <SquareStack size={16} className="shrink-0" />
             </NavLink>
-            <NavLink to="/lotes" className={({ isActive }) => navCls(isActive, mini)} title="Lotes">
-              <Home size={16} className="shrink-0" />
-            </NavLink>
+            {estaNaLotesDeQuadra && (
+              <NavLink to={`/lotes?quadraId=${quadraIdNaUrl}&projetoId=${projetoIdNaUrl}`} className={({ isActive }) => navCls(isActive, mini)} title="Lotes">
+                <Home size={16} className="shrink-0" />
+              </NavLink>
+            )}
           </>
         ) : (
           <div>
@@ -128,9 +135,9 @@ export default function MainLayout() {
               </NavLink>
             )}
 
-            {openLevel >= 3 && (
+            {openLevel >= 3 && estaNaLotesDeQuadra && (
               <NavLink
-                to="/lotes"
+                to={`/lotes?quadraId=${quadraIdNaUrl}&projetoId=${projetoIdNaUrl}`}
                 className={({ isActive }) => cn(
                   'flex items-center gap-2 py-1.5 pl-11 pr-2.5 rounded-lg text-sm transition-all duration-150',
                   isActive ? 'bg-blue-600 text-white font-medium shadow-sm' : 'text-gray-600 hover:bg-blue-50 hover:text-blue-700'

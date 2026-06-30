@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import StatusBadge from '@/components/common/StatusBadge'
 import LoteTipoBadge from '@/components/common/LoteTipoBadge'
 import { toast } from 'sonner'
-import { Plus, ChevronRight, UserCheck, Trash2, Eye } from 'lucide-react'
+import { Plus, ChevronRight, UserCheck, Trash2, Eye, LayoutGrid } from 'lucide-react'
 import { formatCurrency, formatArea, parseCurrencyValue } from '@/utils/format'
 import { CurrencyInput } from '@/components/ui/currency-input'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -38,6 +38,7 @@ export default function Lotes() {
       ...(quadraIdFiltro && { quadraId: quadraIdFiltro }),
       ...(!quadraIdFiltro && projetoIdFiltro && { projetoId: projetoIdFiltro }),
     }),
+    enabled: !!quadraIdFiltro,
   })
 
   const { data: projetos = [] } = useQuery({ queryKey: ['projetos'], queryFn: () => projetosService.listar() })
@@ -279,10 +280,25 @@ export default function Lotes() {
         )}
       </div>
 
-      <DataTable data={lotes} columns={columns} searchPlaceholder="Buscar lote, localização..." isLoading={isLoading} />
+      {!quadraIdFiltro ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="bg-blue-50 rounded-full p-5 mb-4">
+            <LayoutGrid size={36} className="text-blue-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-700 mb-1">Selecione uma quadra</h3>
+          <p className="text-sm text-gray-400 mb-5 max-w-xs">
+            Os lotes só podem ser visualizados dentro da quadra à qual pertencem.
+          </p>
+          <Button variant="outline" onClick={() => navigate('/quadras')}>
+            <LayoutGrid size={14} className="mr-2" />Ir para Quadras
+          </Button>
+        </div>
+      ) : (
+        <DataTable data={lotes} columns={columns} searchPlaceholder="Buscar lote, localização..." isLoading={isLoading} />
+      )}
 
       {/* Totais */}
-      {(lotes as Lote[]).length > 0 && (
+      {quadraIdFiltro && (lotes as Lote[]).length > 0 && (
         <div className="mt-1 border-t-2 border-blue-200 bg-blue-50 rounded-b-lg px-4 py-3 flex flex-wrap gap-6 text-sm">
           <div><span className="text-gray-500">Total Lotes:</span> <strong className="text-blue-800">{(lotes as Lote[]).length}</strong></div>
           <div>
