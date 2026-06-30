@@ -4,6 +4,7 @@
   "ignore": ["src/**/*.spec.ts", "dist"],
   "exec": "ts-node src/index.ts",
   "env": {
-    "NODE_ENV": "development"
+    "NODE_ENV": "development",
+    "TS_NODE_CACHE": "false"
   }
 }

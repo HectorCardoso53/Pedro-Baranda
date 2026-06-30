@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { formatCPF, formatPhone } from '@/utils/format'
+import { CpfCnpjInput } from '@/components/ui/cpf-cnpj-input'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { Cliente } from '@/types'
 
@@ -47,7 +48,7 @@ export default function Clientes() {
   function handleEdit(c: Cliente) {
     setEditing(c)
     setForm({
-      nome: c.nome, cpfCnpj: c.cpfCnpj, rg: c.rg || '', email: c.email,
+      nome: c.nome, cpfCnpj: formatCPF(c.cpfCnpj), rg: c.rg || '', email: c.email,
       telefone: c.telefone, celular: c.celular, estadoCivil: c.estadoCivil, profissao: c.profissao,
       endereco: c.endereco || { cep: '', logradouro: '', numero: '', bairro: '', cidade: '', estado: '' },
     })
@@ -65,7 +66,7 @@ export default function Clientes() {
         {row.original.ativo ? 'Ativo' : 'Inativo'}
       </span>
     )},
-    { id: 'acoes', header: '', cell: ({ row }) => (
+    { id: 'acoes', header: 'Ações', meta: { className: 'w-px whitespace-nowrap' }, cell: ({ row }) => (
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="icon" onClick={() => handleEdit(row.original)}><Pencil size={14} /></Button>
         <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => setDeletingId(row.original.id)}><Trash2 size={14} /></Button>
@@ -94,7 +95,11 @@ export default function Clientes() {
             ].map((f) => (
               <div key={f.key} className={`${f.col === 2 ? 'col-span-2' : ''} space-y-1`}>
                 <Label>{f.label}</Label>
-                <Input placeholder={f.placeholder} value={(form as any)[f.key]} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
+                {f.key === 'cpfCnpj' ? (
+                  <CpfCnpjInput value={(form as any)[f.key]} onChange={(v) => setForm({ ...form, [f.key]: v })} />
+                ) : (
+                  <Input placeholder={f.placeholder} value={(form as any)[f.key]} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
+                )}
               </div>
             ))}
             <div className="space-y-1">

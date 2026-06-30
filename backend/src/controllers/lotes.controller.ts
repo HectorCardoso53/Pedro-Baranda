@@ -18,7 +18,10 @@ export class LotesController {
   }
 
   async listarDisponiveis(req: AuthRequest, res: Response) {
-    const data = await service.listarDisponiveis(req.query.projetoId as string)
+    const data = await service.listarDisponiveis(
+      req.query.projetoId as string,
+      req.query.quadraId as string
+    )
     return successResponse(res, data)
   }
 

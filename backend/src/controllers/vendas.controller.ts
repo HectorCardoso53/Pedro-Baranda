@@ -33,10 +33,13 @@ export class VendasController {
   }
 
   async atualizar(req: AuthRequest, res: Response) {
-    const { observacoes } = req.body
-    const doc = await service.buscar(req.params.id)
-    const updated = { ...doc, observacoes, atualizadoEm: new Date().toISOString() }
-    return successResponse(res, updated)
+    const { observacoes, dataVenda, diaVencimento } = req.body
+    const data = await service.atualizar(req.params.id, {
+      observacoes,
+      dataVenda,
+      diaVencimento: diaVencimento ? Number(diaVencimento) : undefined,
+    })
+    return successResponse(res, data, 'Venda atualizada com sucesso')
   }
 
   async cancelar(req: AuthRequest, res: Response) {
@@ -52,6 +55,21 @@ export class VendasController {
   async gerarContrato(req: AuthRequest, res: Response) {
     const data = await service.gerarContrato(req.params.id)
     return successResponse(res, data, 'Contrato gerado com sucesso')
+  }
+
+  async gerarPromissorias(req: AuthRequest, res: Response) {
+    const data = await service.gerarPromissorias(req.params.id)
+    return successResponse(res, data, 'Promissórias geradas com sucesso')
+  }
+
+  async gerarCarne(req: AuthRequest, res: Response) {
+    const data = await service.gerarCarne(req.params.id)
+    return successResponse(res, data, 'Carnê gerado com sucesso')
+  }
+
+  async gerarPromissoriaDigital(req: AuthRequest, res: Response) {
+    const data = await service.gerarPromissoriaDigital(req.params.id, req.params.parcelaId)
+    return successResponse(res, data, 'Promissória digital gerada com sucesso')
   }
 
   async deletar(req: AuthRequest, res: Response) {

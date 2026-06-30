@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; color: #111; background: #fff; width: 210mm; }
+
+  /* ── Cabeçalho ── */
+  .cabecalho {
+    background: #1e3a6e;
+    color: #fff;
+    padding: 14px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .cab-logo img { height: 48px; width: auto; object-fit: contain; filter: brightness(0) invert(1); }
+  .cab-logo-text { font-size: 15pt; font-weight: bold; letter-spacing: 1px; }
+  .cab-titulo { font-size: 16pt; font-weight: bold; letter-spacing: 2px; text-align: center; }
+  .cab-parcela { text-align: right; }
+  .cab-parcela .nr { font-size: 11pt; font-weight: bold; color: #93c5fd; }
+  .cab-parcela .vence-label { font-size: 8pt; color: #bfdbfe; margin-top: 4px; }
+  .cab-parcela .vence-data { font-size: 14pt; font-weight: bold; color: #fbbf24; }
+
+  /* ── Faixa de vencimento ── */
+  .faixa-vencimento {
+    background: #fef9c3;
+    border-top: 3px solid #f59e0b;
+    border-bottom: 3px solid #f59e0b;
+    padding: 10px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+  .faixa-vencimento .icone { font-size: 18pt; }
+  .faixa-vencimento .texto { font-size: 11pt; font-weight: bold; color: #92400e; }
+  .faixa-vencimento .data-vence { font-size: 16pt; font-weight: bold; color: #b45309; }
+
+  /* ── Corpo principal ── */
+  .corpo { display: flex; gap: 0; }
+
+  /* Coluna esquerda */
+  .col-info { flex: 1; padding: 24px 28px; border-right: 2px solid #e5e7eb; }
+
+  /* Valor em destaque */
+  .valor-card {
+    background: linear-gradient(135deg, #1e3a6e 0%, #2563eb 100%);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    color: #fff;
+    text-align: center;
+  }
+  .valor-label { font-size: 9pt; color: #bfdbfe; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .valor-num { font-size: 32pt; font-weight: bold; line-height: 1; }
+  .valor-extenso { font-size: 8.5pt; color: #bfdbfe; margin-top: 6px; font-style: italic; }
+
+  /* Seção de dados */
+  .secao-titulo {
+    font-size: 7.5pt;
+    font-weight: bold;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 4px;
+    margin-bottom: 10px;
+    margin-top: 16px;
+  }
+  .campo { margin-bottom: 10px; }
+  .campo label { font-size: 7.5pt; color: #9ca3af; text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 2px; }
+  .campo span { font-size: 11pt; color: #111; font-weight: 500; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* Instruções */
+  .instrucoes {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-top: 16px;
+    border: 1px solid #e5e7eb;
+  }
+  .instrucoes-titulo { font-size: 8pt; font-weight: bold; color: #374151; margin-bottom: 6px; }
+  .instrucoes ol { padding-left: 14px; }
+  .instrucoes li { font-size: 8.5pt; color: #4b5563; margin-bottom: 4px; line-height: 1.4; }
+
+  /* Multa */
+  .aviso-multa {
+    background: #fef2f2;
+    border-left: 4px solid #ef4444;
+    padding: 8px 12px;
+    margin-top: 12px;
+    border-radius: 0 6px 6px 0;
+    font-size: 8pt;
+    color: #991b1b;
+    line-height: 1.5;
+  }
+
+  /* Coluna direita - PIX */
+  .col-pix {
+    width: 200px;
+    flex-shrink: 0;
+    padding: 24px 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    background: #f9fafb;
+  }
+  .pix-titulo { font-size: 11pt; font-weight: bold; color: #16a34a; text-align: center; letter-spacing: 1px; }
+  .pix-qr-wrap {
+    width: 164px;
+    height: 164px;
+    border: 2px solid #16a34a;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+  }
+  .pix-qr-wrap svg { width: 160px; height: 160px; display: block; }
+  .pix-qr-wrap img { width: 160px; height: 160px; display: block; }
+  .pix-scan-label { font-size: 7.5pt; color: #6b7280; text-align: center; }
+
+  .pix-divider { width: 100%; border-top: 1px dashed #d1d5db; }
+
+  .pix-copia-titulo { font-size: 8pt; font-weight: bold; color: #374151; text-align: center; }
+  .pix-copia-box {
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px;
+    width: 100%;
+  }
+  .pix-copia-text {
+    font-size: 6pt;
+    color: #374151;
+    word-break: break-all;
+    line-height: 1.6;
+    font-family: monospace;
+    text-align: center;
+  }
+
+  /* ── Rodapé / assinatura ── */
+  .rodape {
+    border-top: 2px solid #1e3a6e;
+    padding: 14px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    background: #f8faff;
+  }
+  .rodape-info { font-size: 7.5pt; color: #6b7280; line-height: 1.6; }
+  .assinatura-wrap { text-align: center; }
+  .assinatura-linha {
+    border-top: 1px solid #374151;
+    padding-top: 5px;
+    width: 220px;
+    font-size: 8.5pt;
+    color: #374151;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<!-- Cabeçalho -->
+<div class="cabecalho">
+  <div class="cab-logo">
+    {{#if logoBase64}}
+      <img src="{{logoBase64}}" alt="Pedro Baranda" />
+    {{else}}
+      <span class="cab-logo-text">PEDRO BARANDA</span>
+    {{/if}}
+  </div>
+  <div class="cab-titulo">NOTA PROMISSÓRIA DIGITAL</div>
+  <div class="cab-parcela">
+    <div class="nr">Parcela {{parcela.numero}} / {{venda.numeroParcelas}}</div>
+    <div class="vence-label">Data de vencimento</div>
+    <div class="vence-data">{{vencimentoFormatado}}</div>
+  </div>
+</div>
+
+<!-- Faixa de atenção -->
+<div class="faixa-vencimento">
+  <span class="icone">📅</span>
+  <span class="texto">Pague até</span>
+  <span class="data-vence">{{vencimentoFormatado}}</span>
+  <span class="texto">para evitar multa e juros</span>
+</div>
+
+<!-- Corpo -->
+<div class="corpo">
+
+  <!-- Coluna de dados -->
+  <div class="col-info">
+
+    <!-- Valor -->
+    <div class="valor-card">
+      <div class="valor-label">Valor desta parcela</div>
+      <div class="valor-num">{{formatMoeda parcela.valor}}</div>
+      <div class="valor-extenso">{{extenso parcela.valor}}</div>
+    </div>
+
+    <!-- Dados do devedor -->
+    <div class="secao-titulo">Dados do Devedor</div>
+    <div class="campo">
+      <label>Nome</label>
+      <span>{{cliente.nome}}</span>
+    </div>
+    <div class="grid-2">
+      <div class="campo">
+        <label>CPF / CNPJ</label>
+        <span>{{cliente.cpfCnpj}}</span>
+      </div>
+      {{#if cliente.rg}}
+      <div class="campo">
+        <label>RG</label>
+        <span>{{cliente.rg}}</span>
+      </div>
+      {{/if}}
+    </div>
+
+    <!-- Dados do imóvel -->
+    <div class="secao-titulo">Dados do Imóvel</div>
+    <div class="grid-2">
+      <div class="campo">
+        <label>Lote</label>
+        <span>Lote {{lote.numero}}</span>
+      </div>
+      <div class="campo">
+        <label>Quadra</label>
+        <span>{{lote.quadraNome}}</span>
+      </div>
+    </div>
+    <div class="campo">
+      <label>Empreendimento</label>
+      <span>{{lote.projetoNome}}</span>
+    </div>
+    <div class="grid-2">
+      <div class="campo">
+        <label>Parcela nº</label>
+        <span>{{parcela.numero}} de {{venda.numeroParcelas}}</span>
+      </div>
+      <div class="campo">
+        <label>Emissão</label>
+        <span>{{dataGeracao}}</span>
+      </div>
+    </div>
+
+    <!-- Instruções de pagamento -->
+    <div class="instrucoes">
+      <div class="instrucoes-titulo">Como pagar:</div>
+      <ol>
+        <li>Abra o aplicativo do seu banco ou carteira digital.</li>
+        <li>Selecione a opção <strong>PIX → Pagar com QR Code</strong> e escaneie o código ao lado.</li>
+        <li>Ou copie o código <strong>PIX Copia e Cola</strong> e cole na opção de pagamento.</li>
+        <li>Confirme o valor <strong>{{formatMoeda parcela.valor}}</strong> e finalize.</li>
+      </ol>
+    </div>
+
+    <div class="aviso-multa">
+      ⚠️ Em caso de atraso: multa de <strong>2%</strong> sobre o valor em atraso, acrescida de juros de <strong>1% ao mês</strong> calculados proporcionalmente ao número de dias de atraso.
+    </div>
+
+  </div>
+
+  <!-- Coluna PIX -->
+  <div class="col-pix">
+    <div class="pix-titulo">⬛ PAGUE VIA PIX</div>
+
+    {{#if pixQrCode}}
+    <div class="pix-qr-wrap">{{{pixQrCode}}}</div>
+    <div class="pix-scan-label">Escaneie com o celular</div>
+    {{/if}}
+
+    {{#if pixCopiaECola}}
+    <div class="pix-divider"></div>
+    <div class="pix-copia-titulo">Copia e Cola:</div>
+    <div class="pix-copia-box">
+      <div class="pix-copia-text">{{pixCopiaECola}}</div>
+    </div>
+    {{/if}}
+  </div>
+
+</div>
+
+<!-- Rodapé -->
+<div class="rodape">
+  <div class="rodape-info">
+    Por este instrumento, o devedor acima qualificado promete pagar a quantia<br>
+    indicada à <strong>Pedro Baranda</strong> ou à sua ordem, na data de vencimento.<br>
+    Documento gerado em {{dataGeracao}} | ID: {{parcela.id}}
+  </div>
+  <div class="assinatura-wrap">
+    <div class="assinatura-linha">
+      {{cliente.nome}}<br>
+      CPF: {{cliente.cpfCnpj}}
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

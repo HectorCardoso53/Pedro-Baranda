@@ -48,12 +48,12 @@ export default function Projetos() {
 
   const columns: ColumnDef<Projeto>[] = [
     { accessorKey: 'nome', header: 'Nome do Projeto' },
-    { accessorKey: 'status', header: 'Status', cell: ({ row }) => (
+    { accessorKey: 'status', header: 'Status', meta: { className: 'w-px whitespace-nowrap' }, cell: ({ row }) => (
       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${row.original.status === 'ativo' ? 'bg-green-100 text-green-800' : row.original.status === 'suspenso' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}`}>
         {row.original.status}
       </span>
     )},
-    { id: 'acoes', header: '', cell: ({ row }) => (
+    { id: 'acoes', header: 'Ações', meta: { className: 'w-px whitespace-nowrap' }, cell: ({ row }) => (
       <div className="flex items-center gap-1">
         <Button
           variant="ghost" size="sm"

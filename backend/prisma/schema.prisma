@@ -147,14 +147,18 @@ model Area {
 }
 
 model Quadra {
-  id           String   @id @default(cuid())
-  nome         String
-  descricao    String?
-  areaId       String?
-  projetoId    String
-  ativo        Boolean  @default(true)
-  criadoEm    DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  nome                String
+  descricao           String?
+  localizacao         String?
+  areaM2              Float?
+  valorEstimado       Float?
+  quantidadeLotesPrev Int?
+  areaId              String?
+  projetoId           String
+  ativo               Boolean  @default(true)
+  criadoEm           DateTime @default(now())
+  atualizadoEm       DateTime @updatedAt
 
   area         Area?    @relation(fields: [areaId], references: [id])
   projeto      Projeto  @relation(fields: [projetoId], references: [id])
@@ -171,6 +175,8 @@ model Lote {
   areaId         String?
   proprietarioId String?
   area           Float      @default(0)
+  dimensao       String?
+  localizacao    String?
   valorBase      Float      @default(0)
   status         StatusLote @default(disponivel)
   vendaId        String?
@@ -307,13 +313,14 @@ model Pagamento {
 }
 
 model Contrato {
-  id        String   @id @default(cuid())
-  vendaId   String
-  tipo      String   @default("contrato")
-  url       String?
-  conteudo  String?
-  clienteId String?
-  criadoEm DateTime @default(now())
+  id           String   @id @default(cuid())
+  vendaId      String
+  tipo         String   @default("contrato")
+  url          String?
+  urlAssinado  String?
+  conteudo     String?
+  clienteId    String?
+  criadoEm    DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
   venda     Venda    @relation(fields: [vendaId], references: [id])

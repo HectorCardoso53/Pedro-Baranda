@@ -53,7 +53,37 @@ export class ProjetosController {
   }
 
   async deletar(req: AuthRequest, res: Response) {
-    await service.deletar(req.params.id)
+    const { id } = req.params
+
+    await prisma.$transaction(async (tx) => {
+      const vendas = await tx.venda.findMany({ where: { projetoId: id }, select: { id: true } })
+      const vendaIds = vendas.map(v => v.id)
+
+      const parcelas = await tx.parcela.findMany({
+        where: vendaIds.length > 0 ? { OR: [{ projetoId: id }, { vendaId: { in: vendaIds } }] } : { projetoId: id },
+        select: { id: true },
+      })
+      const parcelaIds = parcelas.map(p => p.id)
+
+      if (parcelaIds.length > 0) {
+        await tx.promissoria.deleteMany({ where: { parcelaId: { in: parcelaIds } } })
+        await tx.pagamento.deleteMany({ where: { parcelaId: { in: parcelaIds } } })
+      }
+
+      if (vendaIds.length > 0) {
+        await tx.contrato.deleteMany({ where: { vendaId: { in: vendaIds } } })
+        await tx.movimentacaoFinanceira.deleteMany({ where: { vendaId: { in: vendaIds } } })
+        await tx.parcela.deleteMany({ where: { vendaId: { in: vendaIds } } })
+        await tx.venda.deleteMany({ where: { projetoId: id } })
+      }
+
+      await tx.lote.deleteMany({ where: { projetoId: id } })
+      await tx.quadra.deleteMany({ where: { projetoId: id } })
+      await tx.area.deleteMany({ where: { projetoId: id } })
+      await tx.repasse.deleteMany({ where: { projetoId: id } })
+      await tx.projeto.delete({ where: { id } })
+    })
+
     return successResponse(res, null, 'Projeto excluído com sucesso')
   }
 }

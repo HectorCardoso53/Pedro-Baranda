@@ -43,14 +43,17 @@ export default function Vendas() {
   })
 
   const columns: ColumnDef<Venda>[] = [
-    { id: 'id', header: 'ID', cell: ({ row }) => <span className="font-mono text-xs">{row.original.id.substring(0, 8)}</span> },
     { accessorKey: 'dataVenda', header: 'Data', cell: ({ row }) => formatDate(row.original.dataVenda) },
+    { id: 'cliente', header: 'Cliente', cell: ({ row }) => (row.original as any).cliente?.nome || '-' },
+    { id: 'projeto', header: 'Projeto', cell: ({ row }) => (row.original as any).projeto?.nome || '-' },
+    { id: 'lote', header: 'Lote', cell: ({ row }) => `Lote ${(row.original as any).lote?.numero || '-'}` },
     { accessorKey: 'valor', header: 'Valor', cell: ({ row }) => formatCurrency(row.original.valor) },
     { accessorKey: 'numeroParcelas', header: 'Parcelas', cell: ({ row }) => `${row.original.numeroParcelas}x de ${formatCurrency(row.original.valorParcela)}` },
     { id: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} type="venda" /> },
     {
       id: 'acoes',
-      header: '',
+      header: 'Ações',
+      meta: { className: 'w-px whitespace-nowrap' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <Link to={`/vendas/${row.original.id}`}>

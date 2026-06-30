@@ -71,7 +71,7 @@ export const quadrasService = {
 // Lotes
 export const lotesService = {
   listar: (params?: object) => api.get<ApiResponse<Lote[]>>('/lotes', { params }).then(extract),
-  listarDisponiveis: (projetoId?: string) => api.get<ApiResponse<Lote[]>>('/lotes/disponiveis', { params: { projetoId } }).then(extract),
+  listarDisponiveis: (projetoId?: string, quadraId?: string) => api.get<ApiResponse<Lote[]>>('/lotes/disponiveis', { params: { projetoId, quadraId } }).then(extract),
   buscar: (id: string) => api.get<ApiResponse<Lote>>(`/lotes/${id}`).then(extract),
   criar: (data: Partial<Lote>) => api.post<ApiResponse<Lote>>('/lotes', data).then(extract),
   criarEmLote: (lotes: object[]) => api.post('/lotes/bulk', { lotes }).then((r) => r.data.data),
@@ -96,9 +96,13 @@ export const vendasService = {
   buscar: (id: string) => api.get<ApiResponse<Venda>>(`/vendas/${id}`).then(extract),
   parcelas: (id: string) => api.get<ApiResponse<Parcela[]>>(`/vendas/${id}/parcelas`).then(extract),
   criar: (data: object) => api.post<ApiResponse<Venda>>('/vendas', data).then(extract),
+  atualizar: (id: string, data: object) => api.put(`/vendas/${id}`, data).then((r) => r.data.data),
   cancelar: (id: string, motivo: string) => api.patch(`/vendas/${id}/cancelar`, { motivo }),
   distratar: (id: string, motivo: string) => api.patch(`/vendas/${id}/distratar`, { motivo }),
-  gerarContrato: (id: string) => api.post(`/vendas/${id}/gerar-contrato`).then((r) => r.data.data),
+  gerarContrato: (id: string) => api.post(`/vendas/${id}/gerar-contrato`, {}, { timeout: 120000 }).then((r) => r.data.data),
+  gerarPromissorias: (id: string) => api.post(`/vendas/${id}/gerar-promissorias`, {}, { timeout: 120000 }).then((r) => r.data.data),
+  gerarCarne: (id: string) => api.post(`/vendas/${id}/gerar-carne`, {}, { timeout: 120000 }).then((r) => r.data.data),
+  gerarPromissoriaDigital: (vendaId: string, parcelaId: string) => api.post(`/vendas/${vendaId}/parcelas/${parcelaId}/promissoria-digital`, {}, { timeout: 120000 }).then((r) => r.data.data),
   deletar: (id: string) => api.delete(`/vendas/${id}`),
 }
 
@@ -113,6 +117,7 @@ export const parcelasService = {
 export const pagamentosService = {
   listar: (params?: object) => api.get<ApiResponse<Pagamento[]>>('/pagamentos', { params }).then(extract),
   registrar: (data: object) => api.post<ApiResponse<Pagamento>>('/pagamentos', data).then(extract),
+  atualizarData: (id: string, dataPagamento: string) => api.patch(`/pagamentos/${id}/data`, { dataPagamento }).then((r) => r.data.data),
   estornar: (id: string) => api.delete(`/pagamentos/${id}`),
   gerarRecibo: (id: string) => api.post(`/pagamentos/${id}/recibo`).then((r) => r.data.data),
 }
@@ -122,6 +127,7 @@ export const financeiroService = {
   movimentacoes: (params?: object) => api.get('/financeiro/movimentacoes', { params }).then((r) => r.data.data),
   resumo: () => api.get('/financeiro/resumo').then((r) => r.data.data),
   repasses: (params?: object) => api.get('/financeiro/repasses', { params }).then((r) => r.data.data),
+  porCliente: () => api.get('/financeiro/por-cliente').then((r) => r.data.data),
   criarRepasse: (data: object) => api.post('/financeiro/repasses', data).then((r) => r.data.data),
   pagarRepasse: (id: string, data: object) => api.patch(`/financeiro/repasses/${id}/pagar`, data),
   deletarMovimentacao: (id: string) => api.delete(`/financeiro/movimentacoes/${id}`),
@@ -169,5 +175,12 @@ export const demarcacaoService = {
 export const contratosService = {
   listar: (params?: object) => api.get('/contratos', { params }).then((r) => r.data.data),
   gerar: (vendaId: string) => api.post(`/contratos/gerar/${vendaId}`).then((r) => r.data.data),
+  uploadAssinado: (id: string, file: File) => {
+    const form = new FormData()
+    form.append('arquivo', file)
+    return api.post(`/contratos/${id}/upload-assinado`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data.data)
+  },
   deletar: (id: string) => api.delete(`/contratos/${id}`),
 }

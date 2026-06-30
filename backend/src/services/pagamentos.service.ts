@@ -12,7 +12,14 @@ export class PagamentosService {
     for (const [k, v] of Object.entries(filtros)) {
       if (v !== undefined && v !== null && v !== '') where[k] = v
     }
-    return prisma.pagamento.findMany({ where, orderBy: { criadoEm: 'desc' } })
+    return prisma.pagamento.findMany({
+      where,
+      orderBy: { criadoEm: 'desc' },
+      include: {
+        parcela: { select: { numero: true, valor: true } },
+        cliente: { select: { nome: true } },
+      },
+    })
   }
 
   async registrar(data: {
@@ -112,6 +119,22 @@ export class PagamentosService {
       })
       logger.info(`Venda quitada: ${vendaId}`)
     }
+  }
+
+  async atualizarData(pagamentoId: string, dataPagamento: string) {
+    const pagamento = await prisma.pagamento.findUnique({ where: { id: pagamentoId } })
+    if (!pagamento) throw Object.assign(new Error('Pagamento não encontrado'), { statusCode: 404 })
+
+    await prisma.$transaction(async (tx: any) => {
+      await tx.pagamento.update({ where: { id: pagamentoId }, data: { dataPagamento } })
+      await tx.parcela.update({ where: { id: pagamento.parcelaId }, data: { pagamento: dataPagamento } })
+      await tx.movimentacaoFinanceira.updateMany({
+        where: { pagamentoId },
+        data: { data: dataPagamento },
+      })
+    })
+
+    return { atualizado: true }
   }
 
   async estornar(pagamentoId: string) {

@@ -1,8 +1,8 @@
-# Facilita Imobiliaria - Script de inicializacao
+# Pedro Baranda - Script de inicializacao
 $projectPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 Write-Host ""
-Write-Host "=== Facilita Imobiliaria ===" -ForegroundColor Cyan
+Write-Host "=== Pedro Baranda ===" -ForegroundColor Cyan
 Write-Host ""
 
 # 1. Verifica se Docker Desktop esta rodando

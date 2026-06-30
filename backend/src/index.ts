@@ -4,6 +4,7 @@ import helmet from 'helmet'
 import compression from 'compression'
 import morgan from 'morgan'
 import cors from 'cors'
+import path from 'path'
 import { defaultLimiter } from './middlewares/rateLimit.middleware'
 import { errorHandler } from './middlewares/errorHandler.middleware'
 import router from './routes'
@@ -30,14 +31,16 @@ app.use(morgan('combined', {
 app.use(defaultLimiter)
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), app: 'Facilita Imobiliária API' })
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), app: 'Pedro Baranda API' })
 })
+
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')))
 
 app.use('/', router)
 app.use(errorHandler)
 
 app.listen(PORT, () => {
-  logger.info(`🏢 Facilita Imobiliária API rodando na porta ${PORT}`)
+  logger.info(`🏢 Pedro Baranda API rodando na porta ${PORT}`)
   logger.info(`Ambiente: ${process.env.NODE_ENV || 'development'}`)
   startInadimplenciaJob()
 })

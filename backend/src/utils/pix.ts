@@ -52,11 +52,16 @@ export function gerarPixCopiaECola(params: PixPayload): string {
   return payload + crc
 }
 
-export async function gerarQRCodeBase64(pixString: string): Promise<string> {
+export async function gerarQRCodeBase64(pixString: string, width = 300): Promise<string> {
   return QRCode.toDataURL(pixString, {
     errorCorrectionLevel: 'M',
     type: 'image/png',
-    width: 300,
-    margin: 2,
+    width,
+    margin: 1,
   })
+}
+
+export function gerarQRCodeSVG(pixString: string): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (QRCode as any).toString(pixString, { type: 'svg', errorCorrectionLevel: 'M', margin: 1 })
 }

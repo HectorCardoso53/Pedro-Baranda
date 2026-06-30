@@ -13,6 +13,7 @@ router.use(notProprietario)
 router.get('/', controller.listar)
 router.get('/:id', controller.buscar)
 router.post('/', authorize('admin', 'financeiro', 'gerencia'), auditLog('REGISTRAR_PAGAMENTO'), controller.registrar)
+router.patch('/:id/data', authorize('admin', 'financeiro', 'gerencia'), controller.atualizarData)
 router.delete('/:id', authorize('admin'), auditLog('ESTORNAR_PAGAMENTO'), controller.estornar)
 router.post('/:id/recibo', controller.gerarRecibo)
 

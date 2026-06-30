@@ -43,10 +43,18 @@ export class ParcelasController {
     const parcela = await prisma.parcela.findUnique({ where: { id: req.params.id } })
     if (!parcela) throw Object.assign(new Error('Parcela não encontrada'), { statusCode: 404 })
 
-    const [venda, cliente] = await Promise.all([
+    const [venda, cliente, loteRaw] = await Promise.all([
       prisma.venda.findUnique({ where: { id: parcela.vendaId } }),
       parcela.clienteId ? prisma.cliente.findUnique({ where: { id: parcela.clienteId } }) : null,
+      parcela.loteId ? prisma.lote.findUnique({ where: { id: parcela.loteId } }) : null,
     ])
+
+    let loteProjetoNome = ''
+    if (loteRaw?.projetoId) {
+      const proj = await prisma.projeto.findUnique({ where: { id: loteRaw.projetoId } })
+      if (proj) loteProjetoNome = proj.nome
+    }
+    const lote = loteRaw ? { ...loteRaw, projetoNome: loteProjetoNome } : null
 
     let pixQrCode = null
     let pixCopiaECola = null
@@ -70,6 +78,7 @@ export class ParcelasController {
       parcela: { ...parcela, id: req.params.id },
       venda: { ...venda, id: parcela.vendaId },
       cliente,
+      lote,
       pixQrCode,
       pixCopiaECola,
       dataGeracao: new Date().toLocaleDateString('pt-BR'),

@@ -31,6 +31,21 @@ export class ContratosController {
     return successResponse(res, { url: contrato.url })
   }
 
+  async uploadAssinado(req: AuthRequest, res: Response) {
+    const contrato = await prisma.contrato.findUnique({ where: { id: req.params.id } })
+    if (!contrato) throw Object.assign(new Error('Contrato não encontrado'), { statusCode: 404 })
+
+    const file = (req as any).file
+    if (!file) throw Object.assign(new Error('Nenhum arquivo enviado'), { statusCode: 400 })
+
+    const urlAssinado = `/uploads/documentos/${file.filename}`
+    const atualizado = await prisma.contrato.update({
+      where: { id: req.params.id },
+      data: { urlAssinado },
+    })
+    return successResponse(res, atualizado, 'Contrato assinado anexado com sucesso')
+  }
+
   async deletar(req: AuthRequest, res: Response) {
     const contrato = await prisma.contrato.findUnique({ where: { id: req.params.id } })
     if (!contrato) throw Object.assign(new Error('Contrato não encontrado'), { statusCode: 404 })

@@ -26,4 +26,4 @@ COPY . .
 
 EXPOSE 3333
 
-CMD sh -c "npx prisma db push --accept-data-loss && npx ts-node prisma/seed.ts; npm run dev"
+CMD sh -c "./node_modules/.bin/prisma db push --accept-data-loss && ./node_modules/.bin/ts-node prisma/seed.ts; npm run dev"

@@ -71,6 +71,10 @@ export interface Quadra {
   projetoId: string
   nome: string
   descricao?: string
+  localizacao?: string
+  areaM2?: number
+  valorEstimado?: number
+  quantidadeLotesPrev?: number
   ativo: boolean
   criadoEm: string
 }
@@ -83,6 +87,8 @@ export interface Lote {
   proprietarioId: string
   numero: string
   area: number
+  dimensao?: string
+  localizacao?: string
   valorBase: number
   status: LoteStatus
   observacoes?: string

@@ -5,7 +5,7 @@ import PageHeader from '@/components/common/PageHeader'
 import { formatCurrency } from '@/utils/format'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, LineChart, Line
+  Cell, LineChart, Line, CartesianGrid
 } from 'recharts'
 import { Home, TrendingUp, AlertTriangle, DollarSign, ShoppingCart, CheckCircle, Clock, XCircle } from 'lucide-react'
 
@@ -94,15 +94,32 @@ export default function Dashboard() {
           <CardHeader><CardTitle className="text-base">Status dos Lotes</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={lotesStatus || []} dataKey="total" nameKey="status" cx="50%" cy="50%" outerRadius={75} label={({ status, total }) => `${total}`}>
-                  {(lotesStatus || []).map((entry: any, index: number) => (
-                    <Cell key={index} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
+              <BarChart
+                data={[
+                  { name: 'Disp.',  value: stats?.lotesDisponiveis ?? 0, fill: '#16a34a' },
+                  { name: 'Vend.',  value: stats?.lotesVendidos    ?? 0, fill: '#1d4ed8' },
+                  { name: 'Res.',   value: stats?.lotesReservados  ?? 0, fill: '#d97706' },
+                  { name: 'Bloq.',  value: stats?.lotesBloqueados  ?? 0, fill: '#dc2626' },
+                ]}
+                barSize={44}
+                margin={{ top: 8, right: 4, left: -16, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6b7280' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6b7280' }} allowDecimals={false} />
+                <Tooltip
+                  cursor={{ fill: '#f9fafb' }}
+                  formatter={(value: any) => [`${value} lotes`, 'Quantidade']}
+                />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                  {[
+                    { fill: '#16a34a' },
+                    { fill: '#1d4ed8' },
+                    { fill: '#d97706' },
+                    { fill: '#dc2626' },
+                  ].map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>

@@ -4,10 +4,11 @@ import { BaseService } from './base.service'
 export class LotesService extends BaseService {
   constructor() { super('lotes') }
 
-  async listarDisponiveis(projetoId?: string) {
+  async listarDisponiveis(projetoId?: string, quadraId?: string) {
     const where: any = { status: 'disponivel' }
     if (projetoId) where.projetoId = projetoId
-    return prisma.lote.findMany({ where, orderBy: { criadoEm: 'desc' } })
+    if (quadraId) where.quadraId = quadraId
+    return prisma.lote.findMany({ where, orderBy: [{ quadraId: 'asc' }, { numero: 'asc' }] })
   }
 
   async criar(data: Record<string, unknown>) {
@@ -17,6 +18,7 @@ export class LotesService extends BaseService {
   async criarEmLote(lotes: Array<{
     quadraId: string; projetoId: string; proprietarioId: string
     numero: string; area: number; valorBase: number
+    dimensao?: string; localizacao?: string
   }>) {
     const criados = await prisma.$transaction(
       lotes.map((lote) =>

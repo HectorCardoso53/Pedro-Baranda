@@ -26,6 +26,13 @@ export class PagamentosController {
     return successResponse(res, data, 'Pagamento registrado com sucesso', 201)
   }
 
+  async atualizarData(req: AuthRequest, res: Response) {
+    const { dataPagamento } = req.body
+    if (!dataPagamento) throw Object.assign(new Error('Data de pagamento é obrigatória'), { statusCode: 400 })
+    const data = await service.atualizarData(req.params.id, dataPagamento)
+    return successResponse(res, data, 'Data de pagamento atualizada')
+  }
+
   async estornar(req: AuthRequest, res: Response) {
     const data = await service.estornar(req.params.id)
     return successResponse(res, data, 'Pagamento estornado com sucesso')

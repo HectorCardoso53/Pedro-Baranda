@@ -23,16 +23,16 @@ import MapaDemarcacao from './pages/mapa/MapaDemarcacao'
 import LoadingSpinner from './components/common/LoadingSpinner'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
+  const { profile, loading } = useAuth()
   if (loading) return <LoadingSpinner />
-  if (!user) return <Navigate to="/login" replace />
+  if (!profile) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
 function ProprietarioRoute({ children }: { children: React.ReactNode }) {
-  const { user, profile, loading } = useAuth()
+  const { profile, loading } = useAuth()
   if (loading) return <LoadingSpinner />
-  if (!user) return <Navigate to="/login" replace />
+  if (!profile) return <Navigate to="/login" replace />
   if (profile?.role === 'proprietario') return <Navigate to="/painel-proprietario" replace />
   return <>{children}</>
 }

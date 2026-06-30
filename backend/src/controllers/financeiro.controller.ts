@@ -14,6 +14,11 @@ export class FinanceiroController {
       where,
       orderBy: { criadoEm: 'desc' },
       take: 200,
+      include: {
+        venda: {
+          include: { cliente: { select: { nome: true } } },
+        },
+      },
     })
     return successResponse(res, movs)
   }
@@ -30,7 +35,14 @@ export class FinanceiroController {
     const where: Record<string, any> = {}
     if (req.query.proprietarioId) where.proprietarioId = req.query.proprietarioId
     if (req.query.status) where.status = req.query.status
-    const repasses = await prisma.repasse.findMany({ where, orderBy: { criadoEm: 'desc' } })
+    const repasses = await prisma.repasse.findMany({
+      where,
+      orderBy: { criadoEm: 'desc' },
+      include: {
+        proprietario: { select: { nome: true } },
+        projeto: { select: { nome: true } },
+      },
+    })
     return successResponse(res, repasses)
   }
 
@@ -93,5 +105,77 @@ export class FinanceiroController {
     if (!repasse) throw Object.assign(new Error('Repasse não encontrado'), { statusCode: 404 })
     await prisma.repasse.delete({ where: { id: req.params.id } })
     return successResponse(res, null, 'Repasse excluído com sucesso')
+  }
+
+  async porCliente(_req: AuthRequest, res: Response) {
+    const hoje = new Date().toISOString().split('T')[0]
+
+    const clientes = await prisma.cliente.findMany({
+      where: { vendas: { some: { status: { in: ['ativa', 'quitada'] } } } },
+      select: {
+        id: true,
+        nome: true,
+        cpfCnpj: true,
+        celular: true,
+        telefone: true,
+        vendas: {
+          where: { status: { in: ['ativa', 'quitada'] } },
+          select: {
+            id: true,
+            valor: true,
+            status: true,
+            lote: { select: { numero: true } },
+            projeto: { select: { nome: true } },
+            parcelas: {
+              select: { valor: true, status: true, vencimento: true },
+            },
+            pagamentos: {
+              select: { valor: true },
+            },
+          },
+        },
+      },
+      orderBy: { nome: 'asc' },
+    })
+
+    const resultado = clientes.map((c) => {
+      const todasParcelas = c.vendas.flatMap((v) => v.parcelas)
+      const todosPagamentos = c.vendas.flatMap((v) => v.pagamentos)
+
+      const totalPago = todosPagamentos.reduce((a, p) => a + p.valor, 0)
+      const valorTotalVendas = c.vendas.reduce((a, v) => a + v.valor, 0)
+
+      const parcelasAtivas = todasParcelas.filter((p) => p.status !== 'cancelada' && p.status !== 'paga')
+      const parcelasVencidas = parcelasAtivas.filter(
+        (p) => p.status === 'vencida' || (p.status === 'pendente' && !!p.vencimento && p.vencimento < hoje)
+      )
+      const totalEmAberto = parcelasAtivas.reduce((a, p) => a + p.valor, 0)
+      const totalVencido = parcelasVencidas.reduce((a, p) => a + p.valor, 0)
+
+      return {
+        id: c.id,
+        nome: c.nome,
+        cpfCnpj: c.cpfCnpj,
+        celular: c.celular,
+        telefone: c.telefone,
+        totalVendas: c.vendas.length,
+        valorTotalVendas,
+        totalPago,
+        totalEmAberto,
+        totalVencido,
+        parcelasVencidas: parcelasVencidas.length,
+        parcelasPendentes: parcelasAtivas.length - parcelasVencidas.length,
+        inadimplente: parcelasVencidas.length > 0,
+        vendas: c.vendas.map((v) => ({
+          id: v.id,
+          lote: v.lote?.numero,
+          projeto: v.projeto?.nome,
+          valor: v.valor,
+          status: v.status,
+        })),
+      }
+    })
+
+    return successResponse(res, resultado)
   }
 }

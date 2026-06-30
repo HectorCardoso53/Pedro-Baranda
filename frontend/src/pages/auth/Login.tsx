@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,7 @@ type FormData = z.infer<typeof schema>
 
 export default function Login() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -30,6 +32,7 @@ export default function Login() {
     try {
       await login(data.email, data.password)
       toast.success('Bem-vindo ao Pedro Baranda!')
+      navigate('/')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Credenciais inválidas')
     } finally {

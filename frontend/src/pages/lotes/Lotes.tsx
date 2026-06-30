@@ -10,9 +10,11 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import StatusBadge from '@/components/common/StatusBadge'
+import LoteTipoBadge from '@/components/common/LoteTipoBadge'
 import { toast } from 'sonner'
-import { Plus, ChevronRight, UserCheck, Trash2 } from 'lucide-react'
-import { formatCurrency, formatArea } from '@/utils/format'
+import { Plus, ChevronRight, UserCheck, Trash2, Eye } from 'lucide-react'
+import { formatCurrency, formatArea, parseCurrencyValue } from '@/utils/format'
+import { CurrencyInput } from '@/components/ui/currency-input'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { Lote } from '@/types'
 
@@ -24,8 +26,10 @@ export default function Lotes() {
   const projetoIdFiltro = searchParams.get('projetoId') || ''
 
   const [open, setOpen] = useState(false)
+  const [openLote, setOpenLote] = useState(false)
   const [filtroStatus, setFiltroStatus] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [viewingLote, setViewingLote] = useState<Lote | null>(null)
 
   const { data: lotes = [], isLoading } = useQuery({
     queryKey: ['lotes', filtroStatus, quadraIdFiltro, projetoIdFiltro],
@@ -42,12 +46,27 @@ export default function Lotes() {
   const { data: vendas = [] } = useQuery({ queryKey: ['vendas'], queryFn: () => vendasService.listar() })
   const { data: clientes = [] } = useQuery({ queryKey: ['clientes'], queryFn: () => clientesService.listar() })
 
-  const quadraAtual = quadras.find((q: any) => q.id === quadraIdFiltro) as any
+  const quadraAtual = (quadras as any[]).find((q) => q.id === quadraIdFiltro) as any
   const projetoAtual = projetos.find((p: any) => p.id === (quadraAtual?.projetoId || projetoIdFiltro)) as any
 
+  // Form lote único
   const [form, setForm] = useState({
-    numero: '', area: '', valorBase: '',
+    numero: '', area: '', dimensao: '', localizacao: '', valorBase: '',
     quadraId: quadraIdFiltro, projetoId: projetoIdFiltro, proprietarioId: '', observacoes: '',
+  })
+
+  // Form criação em lote
+  const [loteForm, setLoteForm] = useState({
+    projetoId: projetoIdFiltro,
+    quadraId: quadraIdFiltro,
+    proprietarioId: '',
+    prefixo: '',
+    inicio: '1',
+    fim: '10',
+    dimensao: '',
+    area: '',
+    localizacao: '',
+    valorBase: '',
   })
 
   const deleteMutacao = useMutation({
@@ -64,12 +83,39 @@ export default function Lotes() {
     mutationFn: () => lotesService.criar({
       ...form,
       area: parseFloat(form.area),
-      valorBase: parseFloat(form.valorBase),
+      valorBase: parseCurrencyValue(form.valorBase),
+      dimensao: form.dimensao || null,
+      localizacao: form.localizacao || null,
     }),
     onSuccess: () => {
       toast.success('Lote criado com sucesso!')
       qc.invalidateQueries({ queryKey: ['lotes'] })
       setOpen(false)
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
+  const criarEmLoteMutacao = useMutation({
+    mutationFn: () => {
+      const inicio = parseInt(loteForm.inicio)
+      const fim = parseInt(loteForm.fim)
+      if (isNaN(inicio) || isNaN(fim) || inicio > fim) throw new Error('Intervalo inválido')
+      const lotesParaCriar = Array.from({ length: fim - inicio + 1 }, (_, i) => ({
+        quadraId: loteForm.quadraId,
+        projetoId: loteForm.projetoId,
+        proprietarioId: loteForm.proprietarioId,
+        numero: loteForm.prefixo ? `${loteForm.prefixo}${inicio + i}` : String(inicio + i),
+        area: parseFloat(loteForm.area) || 0,
+        dimensao: loteForm.dimensao || null,
+        localizacao: loteForm.localizacao || null,
+        valorBase: parseCurrencyValue(loteForm.valorBase),
+      }))
+      return lotesService.criarEmLote(lotesParaCriar)
+    },
+    onSuccess: (data: any) => {
+      toast.success(`${data?.length || ''} lotes criados com sucesso!`)
+      qc.invalidateQueries({ queryKey: ['lotes'] })
+      setOpenLote(false)
     },
     onError: (err) => toast.error(err.message),
   })
@@ -80,21 +126,59 @@ export default function Lotes() {
     return (clientes as any[]).find((c) => c.id === venda.clienteId) || null
   }
 
+  const previewLotes = () => {
+    const inicio = parseInt(loteForm.inicio)
+    const fim = parseInt(loteForm.fim)
+    if (isNaN(inicio) || isNaN(fim) || inicio > fim) return []
+    return Array.from({ length: Math.min(fim - inicio + 1, 5) }, (_, i) =>
+      loteForm.prefixo ? `${loteForm.prefixo}${inicio + i}` : String(inicio + i)
+    )
+  }
+
   const columns: ColumnDef<Lote>[] = [
-    { accessorKey: 'numero', header: 'Lote Nº' },
-    { accessorKey: 'area', header: 'Área', cell: ({ row }) => formatArea(row.original.area) },
-    { accessorKey: 'valorBase', header: 'Valor Base', cell: ({ row }) => formatCurrency(row.original.valorBase) },
+    {
+      accessorKey: 'numero',
+      header: 'Lote',
+      meta: { className: 'w-px whitespace-nowrap' },
+      cell: ({ row }) => <span className="font-semibold text-blue-700">{row.original.numero}</span>,
+    },
+    {
+      id: 'dimensao',
+      header: 'Tipo / Dim.',
+      meta: { className: 'w-px whitespace-nowrap' },
+      cell: ({ row }) => <LoteTipoBadge dimensao={row.original.dimensao} />,
+    },
+    {
+      accessorKey: 'area',
+      header: 'Área (m²)',
+      meta: { className: 'w-px whitespace-nowrap' },
+      cell: ({ row }) => <span className="text-sm">{formatArea(row.original.area)}</span>,
+    },
+    {
+      id: 'localizacao',
+      header: 'Localização',
+      cell: ({ row }) => row.original.localizacao
+        ? <span className="text-sm text-gray-600">{row.original.localizacao}</span>
+        : <span className="text-gray-300">—</span>,
+    },
+    {
+      accessorKey: 'valorBase',
+      header: 'Valor',
+      meta: { className: 'w-px whitespace-nowrap' },
+      cell: ({ row }) => <span className="text-sm font-medium text-green-700">{formatCurrency(row.original.valorBase)}</span>,
+    },
     {
       id: 'status',
       header: 'Status',
+      meta: { className: 'w-px whitespace-nowrap' },
       cell: ({ row }) => <StatusBadge status={row.original.status} type="lote" />,
     },
     {
       id: 'cliente',
-      header: 'Cliente Final',
+      header: 'Cliente',
       cell: ({ row }) => {
         const cliente = getClienteDoLote(row.original.id)
-        if (!cliente) return <span className="text-gray-400 text-xs">—</span>
+        if (!cliente) return <span className="text-gray-300 text-xs">—</span>
         return (
           <div className="flex items-center gap-1.5">
             <UserCheck size={13} className="text-green-600 shrink-0" />
@@ -106,16 +190,16 @@ export default function Lotes() {
     {
       id: 'acoes',
       header: '',
+      meta: { className: 'w-px whitespace-nowrap' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          {row.original.status === 'disponivel' && (
-            <Button variant="ghost" size="sm" onClick={() => {
-              lotesService.alterarStatus(row.original.id, 'reservado').then(() => {
-                toast.success('Lote reservado')
-                qc.invalidateQueries({ queryKey: ['lotes'] })
-              })
-            }}>Reservar</Button>
-          )}
+          <Button
+            variant="ghost" size="icon"
+            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+            onClick={() => setViewingLote(row.original)}
+          >
+            <Eye size={14} />
+          </Button>
           <Button
             variant="ghost" size="icon"
             className="text-red-500 hover:text-red-700 hover:bg-red-50"
@@ -127,6 +211,10 @@ export default function Lotes() {
       ),
     },
   ]
+
+  const quadrasFiltradas = (quadras as any[]).filter((q) =>
+    !loteForm.projetoId || q.projetoId === loteForm.projetoId
+  )
 
   return (
     <div>
@@ -159,15 +247,17 @@ export default function Lotes() {
         title="Lotes"
         description={quadraAtual ? `Lotes da quadra ${quadraAtual.nome}` : 'Gestão de lotes do patrimônio'}
       >
-        <Button onClick={() => {
-          setForm({ numero: '', area: '', valorBase: '', quadraId: quadraIdFiltro, projetoId: projetoIdFiltro, proprietarioId: '', observacoes: '' })
-          setOpen(true)
-        }}>
-          <Plus size={16} className="mr-1" />Novo Lote
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => {
+            setForm({ numero: '', area: '', dimensao: '', localizacao: '', valorBase: '', quadraId: quadraIdFiltro, projetoId: projetoIdFiltro, proprietarioId: '', observacoes: '' })
+            setOpen(true)
+          }}>
+            <Plus size={16} className="mr-1" />Novo Lote
+          </Button>
+        </div>
       </PageHeader>
 
-      <div className="flex gap-3 mb-4">
+      <div className="flex gap-3 mb-4 flex-wrap">
         <Select value={filtroStatus || 'todos'} onValueChange={(v) => setFiltroStatus(v === 'todos' ? '' : v)}>
           <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
@@ -189,8 +279,28 @@ export default function Lotes() {
         )}
       </div>
 
-      <DataTable data={lotes} columns={columns} searchPlaceholder="Buscar lote..." isLoading={isLoading} />
+      <DataTable data={lotes} columns={columns} searchPlaceholder="Buscar lote, localização..." isLoading={isLoading} />
 
+      {/* Totais */}
+      {(lotes as Lote[]).length > 0 && (
+        <div className="mt-1 border-t-2 border-blue-200 bg-blue-50 rounded-b-lg px-4 py-3 flex flex-wrap gap-6 text-sm">
+          <div><span className="text-gray-500">Total Lotes:</span> <strong className="text-blue-800">{(lotes as Lote[]).length}</strong></div>
+          <div>
+            <span className="text-gray-500">Disponíveis:</span>{' '}
+            <strong className="text-green-700">{(lotes as Lote[]).filter(l => l.status === 'disponivel').length}</strong>
+          </div>
+          <div>
+            <span className="text-gray-500">Vendidos:</span>{' '}
+            <strong className="text-red-600">{(lotes as Lote[]).filter(l => l.status === 'vendido').length}</strong>
+          </div>
+          <div>
+            <span className="text-gray-500">Valor Total:</span>{' '}
+            <strong className="text-green-700">{formatCurrency((lotes as Lote[]).reduce((s, l) => s + (l.valorBase || 0), 0))}</strong>
+          </div>
+        </div>
+      )}
+
+      {/* Modal criar lote único */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Novo Lote</DialogTitle></DialogHeader>
@@ -209,7 +319,7 @@ export default function Lotes() {
               <Select value={form.proprietarioId} onValueChange={(v) => setForm({ ...form, proprietarioId: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
-                  {proprietarios.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                  {(proprietarios as any[]).map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -225,27 +335,206 @@ export default function Lotes() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Número do Lote *</Label>
-              <Input placeholder="Ex: 01" value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })} />
+              <Label>Nome / Número *</Label>
+              <Input placeholder="Ex: A1, R5" value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Dimensão</Label>
+              <Input placeholder="Ex: 10X30, 15X30" value={form.dimensao} onChange={(e) => setForm({ ...form, dimensao: e.target.value })} />
             </div>
             <div className="space-y-1">
               <Label>Área (m²) *</Label>
               <Input type="number" placeholder="300" value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} />
             </div>
+            <div className="space-y-1">
+              <Label>Valor Base *</Label>
+              <CurrencyInput value={form.valorBase} onChange={(v) => setForm({ ...form, valorBase: v })} placeholder="12.000,00" />
+            </div>
             <div className="col-span-2 space-y-1">
-              <Label>Valor Base (R$) *</Label>
-              <Input type="number" placeholder="50000" value={form.valorBase} onChange={(e) => setForm({ ...form, valorBase: e.target.value })} />
+              <Label>Localização</Label>
+              <Input placeholder="Ex: Rua 15, Travessa 01" value={form.localizacao} onChange={(e) => setForm({ ...form, localizacao: e.target.value })} />
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={() => criarMutacao.mutate()} disabled={criarMutacao.isPending}>
+            <Button onClick={() => criarMutacao.mutate()} disabled={criarMutacao.isPending || !form.numero || !form.quadraId}>
               {criarMutacao.isPending ? 'Criando...' : 'Criar Lote'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* Modal criar em lote */}
+      <Dialog open={openLote} onOpenChange={setOpenLote}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Criar Lotes em Série</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-gray-500 -mt-2">Cria múltiplos lotes de uma vez com as mesmas características.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>Projeto *</Label>
+              <Select value={loteForm.projetoId} onValueChange={(v) => setLoteForm({ ...loteForm, projetoId: v, quadraId: '' })}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {projetos.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Proprietário *</Label>
+              <Select value={loteForm.proprietarioId} onValueChange={(v) => setLoteForm({ ...loteForm, proprietarioId: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {(proprietarios as any[]).map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>Quadra *</Label>
+              <Select value={loteForm.quadraId} onValueChange={(v) => setLoteForm({ ...loteForm, quadraId: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione a quadra" /></SelectTrigger>
+                <SelectContent>
+                  {quadrasFiltradas.map((q: any) => <SelectItem key={q.id} value={q.id}>{q.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-2">
+              <div className="border rounded-lg p-3 bg-gray-50 space-y-3">
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Numeração dos Lotes</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Prefixo</Label>
+                    <Input placeholder="Ex: A, R" value={loteForm.prefixo} onChange={(e) => setLoteForm({ ...loteForm, prefixo: e.target.value })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Do número</Label>
+                    <Input type="number" min="1" value={loteForm.inicio} onChange={(e) => setLoteForm({ ...loteForm, inicio: e.target.value })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Até número</Label>
+                    <Input type="number" min="1" value={loteForm.fim} onChange={(e) => setLoteForm({ ...loteForm, fim: e.target.value })} />
+                  </div>
+                </div>
+                {previewLotes().length > 0 && (
+                  <p className="text-xs text-blue-600">
+                    Lotes: <strong>{previewLotes().join(', ')}{parseInt(loteForm.fim) - parseInt(loteForm.inicio) >= 5 ? `... (${parseInt(loteForm.fim) - parseInt(loteForm.inicio) + 1} no total)` : ''}</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Dimensão</Label>
+              <Input placeholder="Ex: 10X30, 15X30" value={loteForm.dimensao} onChange={(e) => setLoteForm({ ...loteForm, dimensao: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label>Área (m²) *</Label>
+              <Input type="number" placeholder="300" value={loteForm.area} onChange={(e) => setLoteForm({ ...loteForm, area: e.target.value })} />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>Valor Base por Lote *</Label>
+              <CurrencyInput value={loteForm.valorBase} onChange={(v) => setLoteForm({ ...loteForm, valorBase: v })} placeholder="12.000,00" />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>Localização</Label>
+              <Input placeholder="Ex: Rua 15, Travessa 01, Rodovia PA 441" value={loteForm.localizacao} onChange={(e) => setLoteForm({ ...loteForm, localizacao: e.target.value })} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setOpenLote(false)}>Cancelar</Button>
+            <Button
+              onClick={() => criarEmLoteMutacao.mutate()}
+              disabled={criarEmLoteMutacao.isPending || !loteForm.quadraId || !loteForm.proprietarioId || !loteForm.area}
+            >
+              {criarEmLoteMutacao.isPending
+                ? 'Criando...'
+                : `Criar ${!isNaN(parseInt(loteForm.inicio)) && !isNaN(parseInt(loteForm.fim)) ? parseInt(loteForm.fim) - parseInt(loteForm.inicio) + 1 : ''} Lotes`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal detalhes do lote */}
+      {viewingLote && (() => {
+        const quadra = (quadras as any[]).find((q) => q.id === viewingLote.quadraId)
+        const projeto = (projetos as any[]).find((p) => p.id === viewingLote.projetoId)
+        const proprietario = (proprietarios as any[]).find((p) => p.id === viewingLote.proprietarioId)
+        const venda = (vendas as any[]).find((v) => v.loteId === viewingLote.id && v.status !== 'cancelada' && v.status !== 'distratada')
+        const cliente = venda ? (clientes as any[]).find((c) => c.id === venda.clienteId) : null
+        return (
+          <Dialog open={!!viewingLote} onOpenChange={(v) => !v && setViewingLote(null)}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  Lote {viewingLote.numero}
+                  <StatusBadge status={viewingLote.status} type="lote" />
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 text-sm">
+                {/* Localização */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  <div className="text-gray-500">Projeto</div>
+                  <div className="font-medium">{projeto?.nome || '—'}</div>
+                  <div className="text-gray-500">Quadra</div>
+                  <div className="font-medium">{quadra?.nome || '—'}</div>
+                  <div className="text-gray-500">Proprietário</div>
+                  <div className="font-medium">{proprietario?.nome || '—'}</div>
+                </div>
+
+                <hr />
+
+                {/* Características */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  <div className="text-gray-500">Tipo / Dimensão</div>
+                  <div><LoteTipoBadge dimensao={viewingLote.dimensao} /></div>
+                  <div className="text-gray-500">Área</div>
+                  <div className="font-medium">{formatArea(viewingLote.area)}</div>
+                  <div className="text-gray-500">Localização</div>
+                  <div className="font-medium">{viewingLote.localizacao || '—'}</div>
+                  <div className="text-gray-500">Valor Base</div>
+                  <div className="font-medium text-green-700">{formatCurrency(viewingLote.valorBase)}</div>
+                  {viewingLote.observacoes && (
+                    <>
+                      <div className="text-gray-500">Observações</div>
+                      <div className="font-medium">{viewingLote.observacoes}</div>
+                    </>
+                  )}
+                </div>
+
+                {/* Venda */}
+                {venda && cliente && (
+                  <>
+                    <hr />
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Venda Ativa</p>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                      <div className="text-gray-500">Cliente</div>
+                      <div className="font-medium text-blue-700">{cliente.nome}</div>
+                      <div className="text-gray-500">Valor da Venda</div>
+                      <div className="font-medium">{formatCurrency(venda.valor)}</div>
+                      <div className="text-gray-500">Entrada</div>
+                      <div className="font-medium">{formatCurrency(venda.entrada)}</div>
+                      <div className="text-gray-500">Saldo / Parcelas</div>
+                      <div className="font-medium">{formatCurrency(venda.saldo)} em {venda.numeroParcelas}x</div>
+                      <div className="text-gray-500">Status da Venda</div>
+                      <div><StatusBadge status={venda.status} type="venda" /></div>
+                    </div>
+                    <Button
+                      variant="outline" size="sm" className="w-full mt-1"
+                      onClick={() => { setViewingLote(null); navigate(`/vendas/${venda.id}`) }}
+                    >
+                      Ver detalhes da venda
+                    </Button>
+                  </>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        )
+      })()}
+
+      {/* Modal excluir */}
       <Dialog open={!!deletingId} onOpenChange={(v) => !v && setDeletingId(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Excluir lote?</DialogTitle></DialogHeader>

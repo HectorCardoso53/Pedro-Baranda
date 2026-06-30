@@ -18,6 +18,9 @@ router.put('/:id', authorize('admin', 'gerencia', 'financeiro'), controller.atua
 router.patch('/:id/cancelar', authorize('admin', 'gerencia'), auditLog('CANCELAR_VENDA'), controller.cancelar)
 router.patch('/:id/distratar', authorize('admin', 'gerencia'), auditLog('DISTRATAR_VENDA'), controller.distratar)
 router.post('/:id/gerar-contrato', authorize('admin', 'gerencia', 'financeiro'), controller.gerarContrato)
+router.post('/:id/gerar-promissorias', authorize('admin', 'gerencia', 'financeiro'), controller.gerarPromissorias)
+router.post('/:id/gerar-carne', authorize('admin', 'gerencia', 'financeiro'), controller.gerarCarne)
+router.post('/:id/parcelas/:parcelaId/promissoria-digital', authorize('admin', 'gerencia', 'financeiro', 'atendimento'), controller.gerarPromissoriaDigital)
 router.delete('/:id', authorize('admin'), controller.deletar)
 
 export default router

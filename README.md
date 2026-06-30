@@ -1,4 +1,4 @@
-# Facilita Imobiliária — ERP Interno
+# Pedro Baranda — ERP Interno
 
 Plataforma web interna para gestão patrimonial imobiliária. Gerencia lotes, vendas, clientes, financeiro, inadimplência, contratos e promissórias.
 
@@ -47,7 +47,7 @@ ALLOWED_ORIGINS=http://localhost,http://localhost:5173
 
 # PIX
 PIX_CHAVE=chave-pix-da-empresa
-PIX_NOME=FACILITA IMOBILIARIA
+PIX_NOME=PEDRO BARANDA
 PIX_CIDADE=SAO PAULO
 
 # Node

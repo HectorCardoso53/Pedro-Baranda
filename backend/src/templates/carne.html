@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 9pt; color: #000; background: #fff; }
+
+  .slip {
+    border: 1.5px solid #1e3a6e;
+    border-radius: 4px;
+    padding: 10px 14px 8px 14px;
+    margin-bottom: 4px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .slip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #c8d8f0;
+    padding-bottom: 6px;
+    margin-bottom: 7px;
+  }
+
+  .empresa { display: flex; align-items: center; gap: 8px; }
+  .empresa-nome { font-size: 10pt; font-weight: bold; color: #1e3a6e; }
+  .empresa-sub { font-size: 6.5pt; color: #888; margin-top: 1px; }
+
+  .parcela-badge {
+    text-align: right;
+  }
+  .parcela-num { font-size: 9.5pt; font-weight: bold; color: #1e3a6e; }
+  .venc-label { font-size: 7pt; color: #888; }
+  .venc-val { font-size: 8.5pt; font-weight: bold; color: #c0392b; }
+
+  .slip-body { display: flex; gap: 12px; align-items: stretch; }
+
+  .valor-box {
+    background: #1e3a6e;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    text-align: center;
+    min-width: 105px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .valor-label { font-size: 6.5pt; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.5px; }
+  .valor-num { font-size: 13pt; font-weight: bold; line-height: 1.2; margin-top: 2px; }
+
+  .dados { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .dado { font-size: 8pt; }
+  .dado b { font-size: 6.5pt; color: #666; font-weight: normal; display: block; line-height: 1.3; }
+
+  .pix-row { display: flex; gap: 3px; align-items: flex-start; margin-top: 2px; }
+  .pix-qr { width: 18mm; height: 18mm; flex-shrink: 0; border: 0.5px solid #ddd; overflow: hidden; }
+  .pix-qr svg { width: 100%; height: 100%; display: block; }
+  .pix-linha { flex: 1; font-size: 6pt; color: #444; background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 2px; padding: 2px 4px; word-break: break-all; }
+
+  .slip-footer {
+    border-top: 1px dashed #ccc;
+    margin-top: 7px;
+    padding-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .assinatura-linha { border-top: 1px solid #000; width: 180px; margin-top: 12px; font-size: 6.5pt; color: #555; padding-top: 2px; }
+  .rodape-id { font-size: 6pt; color: #bbb; text-align: right; }
+
+  .corte {
+    text-align: center;
+    font-size: 6.5pt;
+    color: #ccc;
+    letter-spacing: 2px;
+    margin: 1px 0 2px 0;
+    line-height: 1;
+  }
+</style>
+</head>
+<body>
+
+{{#each parcelas}}
+{{#unless @first}}<div class="corte">✂ ──────────────────────────────────────────────────────────────────────────────</div>{{/unless}}
+<div class="slip">
+
+  <div class="slip-header">
+    <div class="empresa">
+      {{#if ../logoBase64}}
+        <img src="{{../logoBase64}}" alt="" style="height:30px; width:auto;" />
+      {{else}}
+        <div>
+          <div class="empresa-nome">PEDRO BARANDA</div>
+          <div class="empresa-sub">Loteamento · Cédula de Crédito Imobiliário</div>
+        </div>
+      {{/if}}
+    </div>
+    <div class="parcela-badge">
+      <div class="parcela-num">Parcela {{this.numero}} / {{../totalParcelas}}</div>
+      <div class="venc-label">Vencimento</div>
+      <div class="venc-val">{{this.vencimentoFormatado}}</div>
+    </div>
+  </div>
+
+  <div class="slip-body">
+    <div class="valor-box">
+      <div class="valor-label">Valor</div>
+      <div class="valor-num">{{formatMoeda this.valor}}</div>
+    </div>
+    <div class="dados">
+      <div class="dado">
+        <b>Devedor</b>
+        {{../cliente.nome}} &nbsp;·&nbsp; CPF: {{../cliente.cpfCnpj}}
+      </div>
+      <div class="dado">
+        <b>Imóvel</b>
+        Lote {{../lote.numero}}{{#if ../lote.projetoNome}} — {{../lote.projetoNome}}{{/if}}
+      </div>
+      {{#if this.pixCopiaECola}}
+      <div class="dado">
+        <b>PIX (Copia e Cola)</b>
+        <div class="pix-row">
+          {{#if this.pixQrCode}}<div class="pix-qr">{{{this.pixQrCode}}}</div>{{/if}}
+          <div class="pix-linha">{{this.pixCopiaECola}}</div>
+        </div>
+      </div>
+      {{/if}}
+    </div>
+  </div>
+
+  <div class="slip-footer">
+    <div class="assinatura-linha">Assinatura do Devedor</div>
+    <div class="rodape-id">Ref: {{../vendaRef}} | {{../dataGeracao}}</div>
+  </div>
+
+</div>
+{{/each}}
+
+</body>
+</html>

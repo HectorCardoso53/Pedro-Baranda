@@ -14,16 +14,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { formatCPF, formatPhone } from '@/utils/format'
+import { CpfCnpjInput } from '@/components/ui/cpf-cnpj-input'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { Proprietario } from '@/types'
 
 const schema = z.object({
   nome: z.string().min(3, 'Nome obrigatório'),
-  cpfCnpj: z.string().min(11, 'CPF/CNPJ obrigatório'),
-  email: z.string().email('E-mail inválido'),
-  telefone: z.string().min(10, 'Telefone obrigatório'),
-  pixChave: z.string().min(1, 'Chave PIX obrigatória'),
-  pixTipo: z.enum(['cpf', 'cnpj', 'email', 'telefone', 'aleatoria']),
+  cpfCnpj: z.string().optional().or(z.literal('')),
+  email: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  telefone: z.string().optional().or(z.literal('')),
+  pixChave: z.string().optional().or(z.literal('')),
+  pixTipo: z.enum(['cpf', 'cnpj', 'email', 'telefone', 'aleatoria']).optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -70,8 +71,8 @@ export default function Proprietarios() {
   function handleEdit(p: Proprietario) {
     setEditing(p)
     reset({
-      nome: p.nome, cpfCnpj: p.cpfCnpj, email: p.email,
-      telefone: p.telefone, pixChave: p.pixChave, pixTipo: p.pixTipo,
+      nome: p.nome, cpfCnpj: formatCPF(p.cpfCnpj), email: p.email || '',
+      telefone: p.telefone || '', pixChave: p.pixChave || '', pixTipo: (p.pixTipo as any) || 'cpf',
     })
     setOpen(true)
   }
@@ -100,6 +101,7 @@ export default function Proprietarios() {
     {
       id: 'acoes',
       header: 'Ações',
+      meta: { className: 'w-px whitespace-nowrap' },
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" onClick={() => handleEdit(row.original)} title="Editar">
@@ -150,22 +152,25 @@ export default function Proprietarios() {
               {errors.nome && <p className="text-xs text-red-500">{errors.nome.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label>CPF/CNPJ *</Label>
-              <Input {...register('cpfCnpj')} placeholder="000.000.000-00" />
+              <Label>CPF/CNPJ</Label>
+              <CpfCnpjInput
+                value={watch('cpfCnpj') || ''}
+                onChange={(v) => setValue('cpfCnpj', v, { shouldValidate: true })}
+              />
               {errors.cpfCnpj && <p className="text-xs text-red-500">{errors.cpfCnpj.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label>Telefone *</Label>
+              <Label>Telefone</Label>
               <Input {...register('telefone')} placeholder="(00) 90000-0000" />
               {errors.telefone && <p className="text-xs text-red-500">{errors.telefone.message}</p>}
             </div>
             <div className="col-span-2 space-y-1">
-              <Label>E-mail *</Label>
+              <Label>E-mail</Label>
               <Input {...register('email')} placeholder="email@exemplo.com" />
               {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label>Tipo de Chave PIX *</Label>
+              <Label>Tipo de Chave PIX</Label>
               <Select defaultValue="cpf" onValueChange={(v) => setValue('pixTipo', v as any)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -178,7 +183,7 @@ export default function Proprietarios() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Chave PIX *</Label>
+              <Label>Chave PIX</Label>
               <Input {...register('pixChave')} placeholder="Chave PIX para repasses" />
               {errors.pixChave && <p className="text-xs text-red-500">{errors.pixChave.message}</p>}
             </div>
