@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 9.5pt; color: #000; padding: 20px 28px; }
+
+  .header { text-align: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #ccc; }
+  .header img { height: 60px; width: auto; object-fit: contain; display: block; margin: 0 auto 6px; }
+  .titulo { font-size: 12pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #1e3a6e; }
+  .subtitulo { font-size: 8pt; color: #666; margin-top: 2px; }
+
+  .valor-box { text-align: center; margin: 10px 0; padding: 10px; background: #f5f8ff; border-radius: 4px; }
+  .valor-label { font-size: 7.5pt; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
+  .valor-total { font-size: 20pt; font-weight: bold; color: #16a34a; margin: 2px 0; }
+  .valor-extenso { font-size: 8pt; color: #555; font-style: italic; }
+
+  .declaracao { padding: 10px 14px; margin: 10px 0; font-size: 9.5pt; line-height: 1.7; text-align: justify; border-left: 3px solid #1e3a6e; background: #f9f9f9; }
+
+  .secao { margin: 10px 0; }
+  .secao-titulo { font-size: 7.5pt; font-weight: bold; text-transform: uppercase; color: #1e3a6e; letter-spacing: 0.5px; border-bottom: 1px solid #dde; padding-bottom: 3px; margin-bottom: 7px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
+  .campo label { font-size: 7pt; color: #888; font-weight: bold; display: block; margin-bottom: 1px; text-transform: uppercase; }
+  .campo span { font-size: 9.5pt; color: #111; }
+  .campo span.destaque { font-weight: bold; color: #1e3a6e; }
+
+  .local-data { text-align: center; margin-top: 16px; font-size: 9.5pt; }
+
+  .assinaturas { display: flex; justify-content: space-around; margin-top: 30px; }
+  .assinatura { text-align: center; }
+  .assinatura-linha { border-top: 1px solid #000; padding-top: 6px; min-width: 190px; font-size: 8.5pt; line-height: 1.5; }
+
+  .rodape { font-size: 7pt; color: #aaa; text-align: center; margin-top: 14px; border-top: 1px solid #eee; padding-top: 6px; }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    {{#if logoBase64}}<img src="{{logoBase64}}" alt="Logo" />{{/if}}
+    <div class="titulo">Recibo de Compra e Venda</div>
+    <div class="subtitulo">{{lote.projetoNome}} — Documento de Comprovação de Negócio</div>
+  </div>
+
+  <div class="valor-box">
+    <div class="valor-label">Valor Total do Negócio</div>
+    <div class="valor-total">{{formatMoeda venda.valor}}</div>
+    <div class="valor-extenso">({{extenso venda.valor}})</div>
+  </div>
+
+  <div class="declaracao">
+    Declaro que recebi de <strong>{{cliente.nome}}</strong>{{#if cliente.cpfCnpj}}, CPF/CNPJ <strong>{{cliente.cpfCnpj}}</strong>{{/if}}, a quantia referente à compra e venda do <strong>Lote {{lote.numero}}</strong>{{#if lote.quadraNome}}, Quadra <strong>{{lote.quadraNome}}</strong>{{/if}}{{#if lote.localizacao}}, <strong>{{lote.localizacao}}</strong>{{/if}}, loteamento <strong>{{lote.projetoNome}}</strong>{{#if lote.area}}, área de <strong>{{lote.area}} m²</strong>{{/if}}, conforme condições abaixo.
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">Dados do Comprador</div>
+    <div class="grid-2">
+      <div class="campo"><label>Nome Completo</label><span class="destaque">{{cliente.nome}}</span></div>
+      <div class="campo"><label>CPF / CNPJ</label><span>{{cliente.cpfCnpj}}</span></div>
+      {{#if cliente.estadoCivil}}<div class="campo"><label>Estado Civil</label><span>{{cliente.estadoCivil}}</span></div>{{/if}}
+      {{#if cliente.profissao}}<div class="campo"><label>Profissão</label><span>{{cliente.profissao}}</span></div>{{/if}}
+    </div>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">Dados do Imóvel</div>
+    <div class="grid-3">
+      <div class="campo"><label>Lote</label><span class="destaque">{{lote.numero}}</span></div>
+      <div class="campo"><label>Quadra</label><span>{{lote.quadraNome}}</span></div>
+      {{#if lote.localizacao}}<div class="campo"><label>Rua</label><span>{{lote.localizacao}}</span></div>{{/if}}
+      <div class="campo"><label>Empreendimento</label><span>{{lote.projetoNome}}</span></div>
+      {{#if lote.area}}<div class="campo"><label>Área</label><span>{{lote.area}} m²</span></div>{{/if}}
+      {{#if lote.dimensao}}<div class="campo"><label>Dimensões</label><span>{{lote.dimensao}}</span></div>{{/if}}
+    </div>
+  </div>
+
+  <div class="secao">
+    <div class="secao-titulo">Condições de Pagamento</div>
+    <div class="grid-4">
+      <div class="campo"><label>Valor Total</label><span class="destaque">{{formatMoeda venda.valor}}</span></div>
+      <div class="campo"><label>Entrada</label><span>{{formatMoeda venda.entrada}}</span></div>
+      <div class="campo"><label>Parcelas</label><span>{{venda.numeroParcelas}}x {{formatMoeda venda.valorParcela}}</span></div>
+      <div class="campo"><label>Vencimento</label><span>Todo dia {{venda.diaVencimento}}</span></div>
+    </div>
+    <div class="grid-2" style="margin-top:8px;">
+      {{#if venda.formaEntrada}}<div class="campo"><label>Forma de Pagamento da Entrada</label><span>{{venda.formaEntrada}}</span></div>{{/if}}
+      <div class="campo"><label>Data da Compra</label><span>{{dataVenda}}</span></div>
+    </div>
+  </div>
+
+  <div class="local-data">Oriximiná/PA, {{dataGeracao}}.</div>
+
+  <div class="assinaturas">
+    <div class="assinatura">
+      <div class="assinatura-linha">
+        <strong>VENDEDOR</strong><br>
+        JOÃO PEDRO DE ANDRADE BARANDA<br>
+        CPF: 035.347.072-49
+      </div>
+    </div>
+    <div class="assinatura">
+      <div class="assinatura-linha">
+        <strong>COMPRADOR</strong><br>
+        {{cliente.nome}}<br>
+        CPF: {{cliente.cpfCnpj}}
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    Gerado em {{dataGeracao}} — Sistema Pedro Baranda | ID: {{venda.id}}
+  </div>
+
+</body>
+</html>

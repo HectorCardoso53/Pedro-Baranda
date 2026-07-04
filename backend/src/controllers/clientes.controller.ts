@@ -37,6 +37,11 @@ export class ClientesController {
   }
 
   async deletar(req: AuthRequest, res: Response) {
+    const vendasCount = await prisma.venda.count({ where: { clienteId: req.params.id } })
+    if (vendasCount > 0) {
+      const err = Object.assign(new Error(`Cliente possui ${vendasCount} venda(s) cadastrada(s) e não pode ser excluído`), { statusCode: 409 })
+      throw err
+    }
     await service.deletar(req.params.id)
     return successResponse(res, null, 'Cliente excluído com sucesso')
   }

@@ -30,8 +30,8 @@ export class VendasService {
       where: { id },
       include: {
         cliente: { select: { id: true, nome: true, cpfCnpj: true, rg: true, telefone: true, celular: true, email: true, estadoCivil: true, profissao: true } },
-        lote: { select: { id: true, numero: true, area: true, dimensao: true, quadra: { select: { nome: true } } } },
-        projeto: { select: { id: true, nome: true } },
+        lote: { select: { id: true, numero: true, area: true, dimensao: true, localizacao: true, quadra: { select: { nome: true, localizacao: true } } } },
+        projeto: { select: { id: true, nome: true, regiao: { select: { cidade: true, estado: true } } } },
       },
     })
     if (!venda) throw Object.assign(new Error('Venda não encontrada'), { statusCode: 404 })
@@ -66,6 +66,19 @@ export class VendasService {
     return this.buscar(id)
   }
 
+  private calcularPrimeiroVencimento(diaVencimento: number): string {
+    const hoje = new Date()
+    const diaHoje = hoje.getDate()
+    let mes = hoje.getMonth()
+    let ano = hoje.getFullYear()
+    // Se o dia de vencimento já passou hoje, avança para o próximo mês
+    if (diaVencimento <= diaHoje) {
+      mes += 1
+      if (mes > 11) { mes = 0; ano += 1 }
+    }
+    return format(new Date(ano, mes, diaVencimento), 'yyyy-MM-dd')
+  }
+
   async criar(data: {
     loteId: string
     clienteId: string
@@ -74,7 +87,7 @@ export class VendasService {
     entrada: number
     numeroParcelas: number
     diaVencimento: number
-    primeiroVencimento: string
+    formaEntrada?: string
     observacoes?: string
   }) {
     const lote = await prisma.lote.findUnique({ where: { id: data.loteId } })
@@ -85,6 +98,7 @@ export class VendasService {
 
     const saldo = data.valor - data.entrada
     const valorParcela = parseFloat((saldo / data.numeroParcelas).toFixed(2))
+    const primeiroVencimento = this.calcularPrimeiroVencimento(data.diaVencimento)
 
     const venda = await prisma.$transaction(async (tx) => {
       const novaVenda = await tx.venda.create({
@@ -101,7 +115,8 @@ export class VendasService {
           numeroParcelas: data.numeroParcelas,
           valorParcela,
           diaVencimento: data.diaVencimento,
-          primeiroVencimento: data.primeiroVencimento,
+          primeiroVencimento,
+          formaEntrada: data.formaEntrada || null,
           dataVenda: new Date(),
           status: 'ativa',
           observacoes: data.observacoes || null,
@@ -111,7 +126,7 @@ export class VendasService {
       // Gerar parcelas
       const parcelas = []
       for (let i = 1; i <= data.numeroParcelas; i++) {
-        const vencimento = addMonths(parseISO(data.primeiroVencimento), i - 1)
+        const vencimento = addMonths(parseISO(primeiroVencimento), i - 1)
         const parcela = await tx.parcela.create({
           data: {
             vendaId: novaVenda.id,
@@ -215,7 +230,17 @@ export class VendasService {
     const venda = await prisma.venda.findUnique({ where: { id } })
     if (!venda) throw Object.assign(new Error('Venda não encontrada'), { statusCode: 404 })
 
+    // Busca IDs das parcelas para deletar dependentes corretamente
+    const parcelas = await prisma.parcela.findMany({ where: { vendaId: id }, select: { id: true } })
+    const parcelaIds = parcelas.map((p) => p.id)
+
     await prisma.$transaction(async (tx) => {
+      if (parcelaIds.length > 0) {
+        await tx.pagamento.deleteMany({ where: { parcelaId: { in: parcelaIds } } })
+        await tx.promissoria.deleteMany({ where: { parcelaId: { in: parcelaIds } } })
+      }
+      await tx.contrato.deleteMany({ where: { vendaId: id } })
+      await tx.movimentacaoFinanceira.deleteMany({ where: { vendaId: id } })
       await tx.parcela.deleteMany({ where: { vendaId: id } })
       await tx.venda.delete({ where: { id } })
       if (venda.loteId) {
@@ -225,6 +250,52 @@ export class VendasService {
         })
       }
     })
+  }
+
+  async gerarReciboVenda(vendaId: string) {
+    const venda = await prisma.venda.findUnique({ where: { id: vendaId } })
+    if (!venda) throw Object.assign(new Error('Venda não encontrada'), { statusCode: 404 })
+
+    const [lote, cliente] = await Promise.all([
+      prisma.lote.findUnique({ where: { id: venda.loteId } }),
+      prisma.cliente.findUnique({ where: { id: venda.clienteId } }),
+    ])
+
+    let quadraNome = '', projetoNome = ''
+    if (lote?.quadraId) {
+      const quadra = await prisma.quadra.findUnique({ where: { id: lote.quadraId } })
+      if (quadra) quadraNome = quadra.nome
+    }
+    if (lote?.projetoId) {
+      const projeto = await prisma.projeto.findUnique({ where: { id: lote.projetoId } })
+      if (projeto) projetoNome = projeto.nome
+    }
+
+    const logoPath = path.join(__dirname, '..', '..', 'assets', 'logo.png')
+    let logoBase64: string | null = null
+    try {
+      const logoData = fs.readFileSync(logoPath)
+      logoBase64 = `data:image/png;base64,${logoData.toString('base64')}`
+    } catch { /* sem logo */ }
+
+    const dataVenda = venda.dataVenda
+      ? new Date(venda.dataVenda).toLocaleDateString('pt-BR')
+      : new Date().toLocaleDateString('pt-BR')
+
+    const formaEntradaLabel: Record<string, string> = {
+      pix: 'PIX', dinheiro: 'Dinheiro', transferencia: 'Transferência', debito: 'Débito', cheque: 'Cheque',
+    }
+
+    const url = await gerarPDF('recibo-venda', {
+      venda: { ...venda, id: vendaId, formaEntrada: venda.formaEntrada ? (formaEntradaLabel[venda.formaEntrada] || venda.formaEntrada) : null },
+      lote: { ...lote, quadraNome, projetoNome },
+      cliente,
+      dataVenda,
+      dataGeracao: new Date().toLocaleDateString('pt-BR'),
+      logoBase64,
+    }, `recibo-venda-${vendaId}.pdf`, { margin: { top: '10mm', right: '15mm', bottom: '10mm', left: '15mm' } })
+
+    return { url }
   }
 
   async gerarContrato(vendaId: string) {

@@ -103,18 +103,27 @@ export default function VendaDetalhes() {
     onError: (err: any) => toast.error(err.message),
   })
 
+  const gerarReciboVenda = useMutation({
+    mutationFn: () => vendasService.gerarReciboVenda(id!),
+    onSuccess: (data: any) => { if (data?.url) window.open(data.url, '_blank') },
+    onError: (err: any) => toast.error(err.message),
+  })
+
   if (!venda) return <div className="p-6">Carregando...</div>
 
   const v = venda as any
   const pagas = (parcelas as any[]).filter((p) => p.status === 'paga').length
   const progresso = parcelas.length > 0 ? (pagas / parcelas.length) * 100 : 0
+  const saldoDevedor = (parcelas as any[])
+    .filter((p) => p.status === 'pendente' || p.status === 'vencida')
+    .reduce((acc, p) => acc + p.valor, 0)
 
   // mapa parcelaId → pagamento
   const pagMap = new Map<string, any>()
   for (const pag of pagamentos as any[]) pagMap.set(pag.parcelaId, pag)
 
   const FORMA_LABEL: Record<string, string> = {
-    pix: 'PIX', transferencia: 'Transferência', dinheiro: 'Dinheiro', cheque: 'Cheque',
+    pix: 'PIX', transferencia: 'Transferência', dinheiro: 'Dinheiro', cheque: 'Cheque', debito: 'Débito',
   }
 
   return (
@@ -125,6 +134,18 @@ export default function VendaDetalhes() {
           title={v.cliente?.nome || `Venda #${id?.substring(0, 8)}`}
           description={`Lote ${v.lote?.numero || '-'} — ${v.projeto?.nome || ''}`}
         />
+        <div className="ml-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => gerarReciboVenda.mutate()}
+            disabled={gerarReciboVenda.isPending}
+            className="gap-2"
+          >
+            {gerarReciboVenda.isPending ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />}
+            Recibo de Compra e Venda
+          </Button>
+        </div>
       </div>
 
       {/* Cards de detalhes */}
@@ -193,21 +214,27 @@ export default function VendaDetalhes() {
             <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Imóvel</CardTitle>
           </CardHeader>
           <CardContent className="px-5 pb-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            {/* Linha 1: Lote | Quadra | Rua */}
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <p className="text-xs text-gray-400">Lote</p>
-                <p className="font-bold text-gray-900 text-lg">Lote {v.lote?.numero || '-'}</p>
+                <p className="font-bold text-gray-900 text-base">Lote {v.lote?.numero || '-'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-400">Quadra</p>
                 <p className="text-sm font-medium">{v.lote?.quadra?.nome || '-'}</p>
               </div>
+              <div>
+                <p className="text-xs text-gray-400">Rua</p>
+                <p className="text-sm font-medium">{v.lote?.localizacao || v.lote?.quadra?.localizacao || '-'}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-gray-400">Empreendimento</p>
-              <p className="text-sm font-medium">{v.projeto?.nome || '-'}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+            {/* Linha 2: Empreendimento | Área | Dimensões */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <p className="text-xs text-gray-400">Empreendimento</p>
+                <p className="text-sm font-semibold text-gray-800">{v.projeto?.nome || '-'}</p>
+              </div>
               {v.lote?.area && (
                 <div>
                   <p className="text-xs text-gray-400">Área</p>
@@ -257,7 +284,7 @@ export default function VendaDetalhes() {
               </div>
               <div>
                 <p className="text-xs text-gray-400">Saldo devedor</p>
-                <p className="text-sm font-semibold text-blue-700">{formatCurrency(v.saldo)}</p>
+                <p className="text-sm font-semibold text-blue-700">{formatCurrency(saldoDevedor)}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -312,6 +339,20 @@ export default function VendaDetalhes() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {v.entrada > 0 && (
+                <TableRow className="bg-green-50/60">
+                  <TableCell className="font-medium text-green-700">Entrada</TableCell>
+                  <TableCell>{formatDate(v.dataVenda)}</TableCell>
+                  <TableCell className="font-semibold text-green-700">{formatCurrency(v.entrada)}</TableCell>
+                  <TableCell><StatusBadge status="paga" type="parcela" /></TableCell>
+                  <TableCell>{formatDate(v.dataVenda)}</TableCell>
+                  <TableCell>
+                    <span className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded text-xs font-medium">
+                      {FORMA_LABEL[v.formaEntrada] || v.formaEntrada || '—'}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              )}
               {(parcelas as any[]).map((p) => {
                 const pag = pagMap.get(p.id)
                 const isPaga = p.status === 'paga'

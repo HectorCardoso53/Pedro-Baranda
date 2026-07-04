@@ -18,9 +18,9 @@ const schema = z.object({
   clienteId: z.string().min(1, 'Selecione o cliente'),
   valor: z.string().min(1, 'Valor obrigatório'),
   entrada: z.string().optional().default(''),
+  formaEntrada: z.string().optional(),
   numeroParcelas: z.coerce.number().int().min(1).max(240),
   diaVencimento: z.coerce.number().int().min(1).max(28),
-  primeiroVencimento: z.string().min(1, 'Data obrigatória'),
   observacoes: z.string().optional(),
 })
 
@@ -35,7 +35,7 @@ export default function NovaVendaModal({ open, onClose }: Props) {
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { entrada: '', diaVencimento: 10, numeroParcelas: 12 },
+    defaultValues: { entrada: '', formaEntrada: 'pix', diaVencimento: 10, numeroParcelas: 12 },
   })
 
   const valorStr = watch('valor') || ''
@@ -43,8 +43,19 @@ export default function NovaVendaModal({ open, onClose }: Props) {
   const valor = parseCurrencyValue(valorStr)
   const entrada = parseCurrencyValue(entradaStr)
   const numeroParcelas = watch('numeroParcelas') || 1
+  const diaVencimentoWatch = watch('diaVencimento') || 10
   const saldo = Math.max(0, valor - entrada)
   const valorParcela = numeroParcelas > 0 ? saldo / numeroParcelas : 0
+  const temEntrada = entrada > 0
+
+  function calcularPrimeiroVencimento(dia: number): string {
+    const hoje = new Date()
+    const diaHoje = hoje.getDate()
+    let mes = hoje.getMonth()
+    let ano = hoje.getFullYear()
+    if (dia <= diaHoje) { mes += 1; if (mes > 11) { mes = 0; ano += 1 } }
+    return new Date(ano, mes, dia).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  }
 
   const { data: projetos = [] } = useQuery({
     queryKey: ['projetos'],
@@ -203,26 +214,43 @@ export default function NovaVendaModal({ open, onClose }: Props) {
             <Input type="number" {...register('diaVencimento')} placeholder="10" min="1" max="28" />
           </div>
 
-          {/* Primeiro vencimento */}
-          <div className="col-span-2 space-y-1">
-            <Label>Primeiro vencimento *</Label>
-            <Input type="date" {...register('primeiroVencimento')} />
-          </div>
+          {/* Forma de pagamento da entrada */}
+          {temEntrada && (
+            <div className="space-y-1">
+              <Label>Forma de pagamento da entrada *</Label>
+              <Select defaultValue="pix" onValueChange={(v) => setValue('formaEntrada', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="transferencia">Transferência</SelectItem>
+                  <SelectItem value="debito">Débito</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Resumo */}
           {valor > 0 && (
-            <div className="col-span-2 bg-blue-50 rounded-lg p-4 grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-xs text-gray-500">Saldo a financiar</p>
-                <p className="font-bold text-gray-900">{formatCurrency(saldo)}</p>
+            <div className="col-span-2 bg-blue-50 rounded-lg p-4 space-y-3">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-xs text-gray-500">Saldo a financiar</p>
+                  <p className="font-bold text-gray-900">{formatCurrency(saldo)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Parcelas</p>
+                  <p className="font-bold text-gray-900">{numeroParcelas}x</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Valor/Parcela</p>
+                  <p className="font-bold text-green-700">{formatCurrency(valorParcela)}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Parcelas</p>
-                <p className="font-bold text-gray-900">{numeroParcelas}x</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Valor/Parcela</p>
-                <p className="font-bold text-green-700">{formatCurrency(valorParcela)}</p>
+              <div className="border-t border-blue-100 pt-2 flex justify-between text-xs text-gray-500">
+                <span>Entrada paga hoje: <strong className="text-gray-700">{new Date().toLocaleDateString('pt-BR')}</strong></span>
+                <span>1ª parcela em: <strong className="text-blue-700">{calcularPrimeiroVencimento(diaVencimentoWatch)}</strong></span>
               </div>
             </div>
           )}

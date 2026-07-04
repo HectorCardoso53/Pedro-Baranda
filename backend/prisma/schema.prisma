@@ -232,6 +232,7 @@ model Venda {
   valorParcela        Float       @default(0)
   diaVencimento       Int         @default(1)
   primeiroVencimento  String?
+  formaEntrada        String?
   dataVenda           DateTime    @default(now())
   status              StatusVenda @default(ativa)
   contratoUrl         String?
