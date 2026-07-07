@@ -100,6 +100,7 @@ export const vendasService = {
   cancelar: (id: string, motivo: string) => api.patch(`/vendas/${id}/cancelar`, { motivo }),
   distratar: (id: string, motivo: string) => api.patch(`/vendas/${id}/distratar`, { motivo }),
   gerarReciboVenda: (id: string) => api.post(`/vendas/${id}/gerar-recibo-venda`, {}, { timeout: 120000 }).then((r) => r.data.data),
+  gerarReciboEntrada: (id: string) => api.post(`/vendas/${id}/gerar-recibo-entrada`, {}, { timeout: 120000 }).then((r) => r.data.data),
   gerarContrato: (id: string) => api.post(`/vendas/${id}/gerar-contrato`, {}, { timeout: 120000 }).then((r) => r.data.data),
   gerarPromissorias: (id: string) => api.post(`/vendas/${id}/gerar-promissorias`, {}, { timeout: 120000 }).then((r) => r.data.data),
   gerarCarne: (id: string) => api.post(`/vendas/${id}/gerar-carne`, {}, { timeout: 120000 }).then((r) => r.data.data),

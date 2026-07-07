@@ -271,7 +271,7 @@ export class VendasService {
       if (projeto) projetoNome = projeto.nome
     }
 
-    const logoPath = path.join(__dirname, '..', '..', 'assets', 'logo.png')
+    const logoPath = path.join(__dirname, '..', '..', 'assets', 'pedro_baranda.png')
     let logoBase64: string | null = null
     try {
       const logoData = fs.readFileSync(logoPath)
@@ -294,6 +294,46 @@ export class VendasService {
       dataGeracao: new Date().toLocaleDateString('pt-BR'),
       logoBase64,
     }, `recibo-venda-${vendaId}.pdf`, { margin: { top: '10mm', right: '15mm', bottom: '10mm', left: '15mm' } })
+
+    return { url }
+  }
+
+  async gerarReciboEntrada(vendaId: string) {
+    const venda = await prisma.venda.findUnique({ where: { id: vendaId } })
+    if (!venda) throw Object.assign(new Error('Venda não encontrada'), { statusCode: 404 })
+    if (!venda.entrada || Number(venda.entrada) <= 0) throw Object.assign(new Error('Esta venda não possui entrada'), { statusCode: 400 })
+
+    const [lote, cliente] = await Promise.all([
+      prisma.lote.findUnique({ where: { id: venda.loteId } }),
+      prisma.cliente.findUnique({ where: { id: venda.clienteId } }),
+    ])
+
+    let quadraNome = '', projetoNome = ''
+    if (lote?.quadraId) {
+      const quadra = await prisma.quadra.findUnique({ where: { id: lote.quadraId } })
+      if (quadra) quadraNome = quadra.nome
+    }
+    if (lote?.projetoId) {
+      const projeto = await prisma.projeto.findUnique({ where: { id: lote.projetoId } })
+      if (projeto) projetoNome = projeto.nome
+    }
+
+    const formaEntradaLabel: Record<string, string> = {
+      pix: 'PIX', dinheiro: 'Dinheiro', transferencia: 'Transferência', debito: 'Débito', cheque: 'Cheque',
+    }
+
+    const dataVenda = venda.dataVenda
+      ? new Date(venda.dataVenda).toLocaleDateString('pt-BR')
+      : new Date().toLocaleDateString('pt-BR')
+
+    const url = await gerarPDF('recibo-entrada', {
+      vendaId,
+      valorFormatado: formatarMoedaBR(Number(venda.entrada)),
+      formaEntrada: venda.formaEntrada ? (formaEntradaLabel[venda.formaEntrada] || venda.formaEntrada) : '—',
+      dataVenda,
+      cliente,
+      lote: { ...lote, quadraNome, projetoNome },
+    }, `recibo-entrada-${vendaId}.pdf`)
 
     return { url }
   }
@@ -485,7 +525,7 @@ export class VendasService {
       } catch { /* sem pix */ }
     }
 
-    const logoPath = path.join(__dirname, '..', '..', 'assets', 'logo.png')
+    const logoPath = path.join(__dirname, '..', '..', 'assets', 'pedro_baranda.png')
     let logoBase64: string | null = null
     try {
       const logoData = fs.readFileSync(logoPath)

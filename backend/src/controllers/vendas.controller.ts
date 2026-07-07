@@ -57,6 +57,11 @@ export class VendasController {
     return successResponse(res, data, 'Recibo de compra e venda gerado com sucesso')
   }
 
+  async gerarReciboEntrada(req: AuthRequest, res: Response) {
+    const data = await service.gerarReciboEntrada(req.params.id)
+    return successResponse(res, data, 'Recibo de entrada gerado com sucesso')
+  }
+
   async gerarContrato(req: AuthRequest, res: Response) {
     const data = await service.gerarContrato(req.params.id)
     return successResponse(res, data, 'Contrato gerado com sucesso')

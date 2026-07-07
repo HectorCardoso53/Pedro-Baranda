@@ -18,6 +18,7 @@ router.put('/:id', authorize('admin', 'gerencia', 'financeiro'), controller.atua
 router.patch('/:id/cancelar', authorize('admin', 'gerencia'), auditLog('CANCELAR_VENDA'), controller.cancelar)
 router.patch('/:id/distratar', authorize('admin', 'gerencia'), auditLog('DISTRATAR_VENDA'), controller.distratar)
 router.post('/:id/gerar-recibo-venda', authorize('admin', 'gerencia', 'financeiro', 'atendimento'), controller.gerarReciboVenda)
+router.post('/:id/gerar-recibo-entrada', authorize('admin', 'gerencia', 'financeiro', 'atendimento'), controller.gerarReciboEntrada)
 router.post('/:id/gerar-contrato', authorize('admin', 'gerencia', 'financeiro'), controller.gerarContrato)
 router.post('/:id/gerar-promissorias', authorize('admin', 'gerencia', 'financeiro'), controller.gerarPromissorias)
 router.post('/:id/gerar-carne', authorize('admin', 'gerencia', 'financeiro'), controller.gerarCarne)

@@ -109,6 +109,12 @@ export default function VendaDetalhes() {
     onError: (err: any) => toast.error(err.message),
   })
 
+  const gerarReciboEntrada = useMutation({
+    mutationFn: () => vendasService.gerarReciboEntrada(id!),
+    onSuccess: (data: any) => { if (data?.url) window.open(data.url, '_blank') },
+    onError: (err: any) => toast.error(err.message),
+  })
+
   if (!venda) return <div className="p-6">Carregando...</div>
 
   const v = venda as any
@@ -347,9 +353,23 @@ export default function VendaDetalhes() {
                   <TableCell><StatusBadge status="paga" type="parcela" /></TableCell>
                   <TableCell>{formatDate(v.dataVenda)}</TableCell>
                   <TableCell>
-                    <span className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded text-xs font-medium">
-                      {FORMA_LABEL[v.formaEntrada] || v.formaEntrada || '—'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded text-xs font-medium">
+                        {FORMA_LABEL[v.formaEntrada] || v.formaEntrada || '—'}
+                      </span>
+                      <Button
+                        variant="ghost" size="sm"
+                        className="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2"
+                        onClick={() => gerarReciboEntrada.mutate()}
+                        disabled={gerarReciboEntrada.isPending}
+                      >
+                        {gerarReciboEntrada.isPending
+                          ? <Loader2 size={11} className="animate-spin mr-1" />
+                          : <Receipt size={11} className="mr-1" />
+                        }
+                        Recibo
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}
