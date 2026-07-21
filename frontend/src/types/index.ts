@@ -74,6 +74,7 @@ export interface Quadra {
   localizacao?: string
   areaM2?: number
   valorEstimado?: number
+  valorEntrada?: number
   quantidadeLotesPrev?: number
   ativo: boolean
   criadoEm: string

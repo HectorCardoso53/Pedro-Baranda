@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import StatusBadge from '@/components/common/StatusBadge'
 import LoteTipoBadge from '@/components/common/LoteTipoBadge'
 import { toast } from 'sonner'
-import { Plus, ChevronRight, UserCheck, Trash2, Eye, LayoutGrid } from 'lucide-react'
+import { Plus, ChevronRight, UserCheck, Trash2, Eye, LayoutGrid, Pencil } from 'lucide-react'
 import { formatCurrency, formatArea, parseCurrencyValue } from '@/utils/format'
 import { CurrencyInput } from '@/components/ui/currency-input'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -30,6 +30,8 @@ export default function Lotes() {
   const [filtroStatus, setFiltroStatus] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [viewingLote, setViewingLote] = useState<Lote | null>(null)
+  const [editingLote, setEditingLote] = useState<Lote | null>(null)
+  const [editForm, setEditForm] = useState({ numero: '', area: '', dimensao: '', localizacao: '', valorBase: '', observacoes: '' })
 
   const { data: lotes = [], isLoading } = useQuery({
     queryKey: ['lotes', filtroStatus, quadraIdFiltro, projetoIdFiltro],
@@ -69,6 +71,35 @@ export default function Lotes() {
     localizacao: '',
     valorBase: '',
   })
+
+  const atualizarMutacao = useMutation({
+    mutationFn: () => lotesService.atualizar(editingLote!.id, {
+      numero: editForm.numero,
+      area: parseFloat(editForm.area),
+      valorBase: parseCurrencyValue(editForm.valorBase),
+      dimensao: editForm.dimensao || null,
+      localizacao: editForm.localizacao || null,
+      observacoes: editForm.observacoes || null,
+    }),
+    onSuccess: () => {
+      toast.success('Lote atualizado!')
+      qc.invalidateQueries({ queryKey: ['lotes'] })
+      setEditingLote(null)
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
+  function abrirEdicao(lote: Lote) {
+    setEditingLote(lote)
+    setEditForm({
+      numero: lote.numero,
+      area: lote.area != null ? String(lote.area) : '',
+      dimensao: lote.dimensao || '',
+      localizacao: lote.localizacao || '',
+      valorBase: lote.valorBase != null ? String(lote.valorBase) : '',
+      observacoes: (lote as any).observacoes || '',
+    })
+  }
 
   const deleteMutacao = useMutation({
     mutationFn: (id: string) => lotesService.deletar(id),
@@ -200,6 +231,12 @@ export default function Lotes() {
             onClick={() => setViewingLote(row.original)}
           >
             <Eye size={14} />
+          </Button>
+          <Button
+            variant="ghost" size="icon"
+            onClick={() => abrirEdicao(row.original)}
+          >
+            <Pencil size={14} />
           </Button>
           <Button
             variant="ghost" size="icon"
@@ -549,6 +586,45 @@ export default function Lotes() {
           </Dialog>
         )
       })()}
+
+      {/* Modal editar lote */}
+      <Dialog open={!!editingLote} onOpenChange={(v) => !v && setEditingLote(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Editar Lote {editingLote?.numero}</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>Nome / Número *</Label>
+              <Input value={editForm.numero} onChange={(e) => setEditForm({ ...editForm, numero: e.target.value })} placeholder="Ex: A1, R5" />
+            </div>
+            <div className="space-y-1">
+              <Label>Dimensão</Label>
+              <Input value={editForm.dimensao} onChange={(e) => setEditForm({ ...editForm, dimensao: e.target.value })} placeholder="Ex: 10X30, 15X30" />
+            </div>
+            <div className="space-y-1">
+              <Label>Área (m²) *</Label>
+              <Input type="number" value={editForm.area} onChange={(e) => setEditForm({ ...editForm, area: e.target.value })} placeholder="300" />
+            </div>
+            <div className="space-y-1">
+              <Label>Valor Base *</Label>
+              <CurrencyInput value={editForm.valorBase} onChange={(v) => setEditForm({ ...editForm, valorBase: v })} placeholder="12.000,00" />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>Localização</Label>
+              <Input value={editForm.localizacao} onChange={(e) => setEditForm({ ...editForm, localizacao: e.target.value })} placeholder="Ex: Rua 15, Travessa 01" />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>Observações</Label>
+              <Input value={editForm.observacoes} onChange={(e) => setEditForm({ ...editForm, observacoes: e.target.value })} placeholder="Opcional" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setEditingLote(null)}>Cancelar</Button>
+            <Button onClick={() => atualizarMutacao.mutate()} disabled={atualizarMutacao.isPending || !editForm.numero || !editForm.area}>
+              {atualizarMutacao.isPending ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal excluir */}
       <Dialog open={!!deletingId} onOpenChange={(v) => !v && setDeletingId(null)}>

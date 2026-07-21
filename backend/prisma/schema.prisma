@@ -153,6 +153,7 @@ model Quadra {
   localizacao         String?
   areaM2              Float?
   valorEstimado       Float?
+  valorEntrada        Float?
   quantidadeLotesPrev Int?
   areaId              String?
   projetoId           String

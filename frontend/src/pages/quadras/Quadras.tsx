@@ -21,6 +21,7 @@ type FormState = {
   localizacao: string
   areaM2: string
   valorEstimado: string
+  valorEntrada: string
   quantidadeLotesPrev: string
 }
 
@@ -30,6 +31,7 @@ const emptyForm = (projetoId = ''): FormState => ({
   localizacao: '',
   areaM2: '',
   valorEstimado: '',
+  valorEntrada: '',
   quantidadeLotesPrev: '',
 })
 
@@ -68,6 +70,7 @@ export default function Quadras() {
         localizacao: form.localizacao || null,
         areaM2: form.areaM2 ? parseFloat(form.areaM2) : null,
         valorEstimado: form.valorEstimado ? parseFloat(form.valorEstimado.replace(/\./g, '').replace(',', '.')) : null,
+        valorEntrada: form.valorEntrada ? parseFloat(form.valorEntrada.replace(/\./g, '').replace(',', '.')) : null,
         quantidadeLotesPrev: form.quantidadeLotesPrev ? parseInt(form.quantidadeLotesPrev) : null,
       }
       return editingId
@@ -101,6 +104,7 @@ export default function Quadras() {
       localizacao: q.localizacao || '',
       areaM2: q.areaM2 != null ? String(q.areaM2) : '',
       valorEstimado: q.valorEstimado != null ? String(q.valorEstimado) : '',
+      valorEntrada: q.valorEntrada != null ? String(q.valorEntrada) : '',
       quantidadeLotesPrev: q.quantidadeLotesPrev != null ? String(q.quantidadeLotesPrev) : '',
     })
     setOpen(true)
@@ -110,6 +114,7 @@ export default function Quadras() {
   const totalAreaM2 = (quadras as Quadra[]).reduce((s, q) => s + (q.areaM2 || 0), 0)
   const totalLotesPrev = (quadras as Quadra[]).reduce((s, q) => s + (q.quantidadeLotesPrev || 0), 0)
   const totalValorEstimado = (quadras as Quadra[]).reduce((s, q) => s + (q.valorEstimado || 0), 0)
+  const totalValorEntrada = (quadras as Quadra[]).reduce((s, q) => s + (q.valorEntrada || 0), 0)
   const totalLotesCriados = (todosLotes as any[]).length
 
   const columns: ColumnDef<Quadra>[] = [
@@ -152,6 +157,14 @@ export default function Quadras() {
       meta: { className: 'w-px whitespace-nowrap text-right' },
       cell: ({ row }) => row.original.valorEstimado
         ? <span className="text-sm font-medium text-green-700">{formatCurrency(row.original.valorEstimado)}</span>
+        : <span className="text-gray-300">—</span>,
+    },
+    {
+      id: 'valorEntrada',
+      header: 'Valor de Entrada',
+      meta: { className: 'w-px whitespace-nowrap text-right' },
+      cell: ({ row }) => row.original.valorEntrada
+        ? <span className="text-sm font-medium text-blue-700">{formatCurrency(row.original.valorEntrada)}</span>
         : <span className="text-gray-300">—</span>,
     },
     {
@@ -253,6 +266,12 @@ export default function Quadras() {
               <strong className="text-green-700">{formatCurrency(totalValorEstimado)}</strong>
             </div>
           )}
+          {totalValorEntrada > 0 && (
+            <div>
+              <span className="text-gray-500">Valor de Entrada Total:</span>{' '}
+              <strong className="text-blue-700">{formatCurrency(totalValorEntrada)}</strong>
+            </div>
+          )}
         </div>
       )}
 
@@ -285,6 +304,10 @@ export default function Quadras() {
             <div className="space-y-1">
               <Label>Valor Estimado (R$)</Label>
               <Input type="number" value={form.valorEstimado} onChange={(e) => setForm({ ...form, valorEstimado: e.target.value })} placeholder="Ex: 420000" />
+            </div>
+            <div className="space-y-1">
+              <Label>Valor de Entrada (R$)</Label>
+              <Input type="number" value={form.valorEntrada} onChange={(e) => setForm({ ...form, valorEntrada: e.target.value })} placeholder="Ex: 5000" />
             </div>
             <div className="col-span-2 space-y-1">
               <Label>Localização / Referência</Label>
