@@ -160,14 +160,6 @@ export default function Quadras() {
         : <span className="text-gray-300">—</span>,
     },
     {
-      id: 'valorEntrada',
-      header: 'Valor de Entrada',
-      meta: { className: 'w-px whitespace-nowrap text-right' },
-      cell: ({ row }) => row.original.valorEntrada
-        ? <span className="text-sm font-medium text-blue-700">{formatCurrency(row.original.valorEntrada)}</span>
-        : <span className="text-gray-300">—</span>,
-    },
-    {
       id: 'localizacao',
       header: 'Localização',
       cell: ({ row }) => row.original.localizacao
@@ -264,12 +256,6 @@ export default function Quadras() {
             <div>
               <span className="text-gray-500">Valor Estimado Total:</span>{' '}
               <strong className="text-green-700">{formatCurrency(totalValorEstimado)}</strong>
-            </div>
-          )}
-          {totalValorEntrada > 0 && (
-            <div>
-              <span className="text-gray-500">Valor de Entrada Total:</span>{' '}
-              <strong className="text-blue-700">{formatCurrency(totalValorEntrada)}</strong>
             </div>
           )}
         </div>
