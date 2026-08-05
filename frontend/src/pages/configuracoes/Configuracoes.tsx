@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
-import { Plus, Users, Shield } from 'lucide-react'
+import { Plus, Users, Shield, Eye, EyeOff } from 'lucide-react'
 import api from '@/lib/api'
 import { ROLE_LABEL } from '@/utils/format'
 
@@ -19,6 +19,7 @@ export default function Configuracoes() {
   const qc = useQueryClient()
   const [novoUsuarioOpen, setNovoUsuarioOpen] = useState(false)
   const [form, setForm] = useState({ nome: '', email: '', senha: '', role: 'gerencia', proprietarioId: '' })
+  const [mostrarSenha, setMostrarSenha] = useState(false)
 
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios'],
@@ -117,7 +118,21 @@ export default function Configuracoes() {
             </div>
             <div className="space-y-1">
               <Label>Senha inicial *</Label>
-              <Input type="password" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} />
+              <div className="relative">
+                <Input
+                  type={mostrarSenha ? 'text' : 'password'}
+                  value={form.senha}
+                  onChange={(e) => setForm({ ...form, senha: e.target.value })}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenha(v => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             <div className="space-y-1">
               <Label>Função *</Label>
