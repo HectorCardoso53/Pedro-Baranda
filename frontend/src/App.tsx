@@ -37,6 +37,22 @@ function ProprietarioRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { profile, loading } = useAuth()
+  if (loading) return <LoadingSpinner />
+  if (!profile) return <Navigate to="/login" replace />
+  if (profile.role !== 'admin') return <Navigate to="/vendas" replace />
+  return <>{children}</>
+}
+
+function SemVendedorRoute({ children }: { children: React.ReactNode }) {
+  const { profile, loading } = useAuth()
+  if (loading) return <LoadingSpinner />
+  if (!profile) return <Navigate to="/login" replace />
+  if (profile.role === 'vendedor') return <Navigate to="/vendas" replace />
+  return <>{children}</>
+}
+
 export default function App() {
   const { isProprietario, loading } = useAuth()
   if (loading) return <LoadingSpinner />
@@ -55,7 +71,7 @@ export default function App() {
           </>
         ) : (
           <>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<SemVendedorRoute><Dashboard /></SemVendedorRoute>} />
             <Route path="/proprietarios" element={<ProprietarioRoute><Proprietarios /></ProprietarioRoute>} />
             <Route path="/projetos" element={<Projetos />} />
             <Route path="/quadras" element={<Quadras />} />
@@ -63,15 +79,15 @@ export default function App() {
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/vendas" element={<Vendas />} />
             <Route path="/vendas/:id" element={<VendaDetalhes />} />
-            <Route path="/financeiro" element={<Financeiro />} />
+            <Route path="/financeiro" element={<SemVendedorRoute><Financeiro /></SemVendedorRoute>} />
             <Route path="/promissorias" element={<Promissorias />} />
             <Route path="/contratos" element={<Contratos />} />
-            <Route path="/inadimplencia" element={<Inadimplencia />} />
+            <Route path="/inadimplencia" element={<SemVendedorRoute><Inadimplencia /></SemVendedorRoute>} />
             <Route path="/mapa" element={<MapaLoteamento />} />
-            <Route path="/demarcacao" element={<MapaDemarcacao />} />
-            <Route path="/relatorios" element={<Relatorios />} />
-            <Route path="/configuracoes" element={<Configuracoes />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="/demarcacao" element={<AdminRoute><MapaDemarcacao /></AdminRoute>} />
+            <Route path="/relatorios" element={<SemVendedorRoute><Relatorios /></SemVendedorRoute>} />
+            <Route path="/configuracoes" element={<AdminRoute><Configuracoes /></AdminRoute>} />
+            <Route path="*" element={<Navigate to="/vendas" replace />} />
           </>
         )}
       </Route>

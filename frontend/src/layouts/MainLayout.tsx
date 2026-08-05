@@ -62,21 +62,25 @@ export default function MainLayout() {
     )
   }
 
+  const role = profile?.role || ''
+  const isAdmin = role === 'admin'
+  const isVendedor = role === 'vendedor'
+
   function SidebarNav({ mini }: { mini: boolean }) {
     return (
       <nav className="flex-1 overflow-y-auto py-3 space-y-0.5 px-2">
 
-        <NavLink to="/" end className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Dashboard' : undefined}>
-          <LayoutDashboard size={18} className="shrink-0" />
-          {!mini && <span>Dashboard</span>}
-        </NavLink>
-
-        {['admin', 'gerencia'].includes(profile?.role || '') && (
-          <NavLink to="/proprietarios" className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Proprietários' : undefined}>
-            <Shield size={18} className="shrink-0" />
-            {!mini && <span>Proprietários</span>}
+        {!isVendedor && (
+          <NavLink to="/" end className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Dashboard' : undefined}>
+            <LayoutDashboard size={18} className="shrink-0" />
+            {!mini && <span>Dashboard</span>}
           </NavLink>
         )}
+
+        <NavLink to="/proprietarios" className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Proprietários' : undefined}>
+          <Shield size={18} className="shrink-0" />
+          {!mini && <span>Proprietários</span>}
+        </NavLink>
 
         {mini ? (
           <>
@@ -161,10 +165,12 @@ export default function MainLayout() {
           {!mini && <span>Vendas</span>}
         </NavLink>
 
-        <NavLink to="/financeiro" className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Financeiro' : undefined}>
-          <DollarSign size={18} className="shrink-0" />
-          {!mini && <span>Financeiro</span>}
-        </NavLink>
+        {!isVendedor && (
+          <NavLink to="/financeiro" className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Financeiro' : undefined}>
+            <DollarSign size={18} className="shrink-0" />
+            {!mini && <span>Financeiro</span>}
+          </NavLink>
+        )}
 
         <NavLink to="/promissorias" className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Promissórias' : undefined}>
           <Receipt size={18} className="shrink-0" />
@@ -176,22 +182,28 @@ export default function MainLayout() {
           {!mini && <span>Contratos</span>}
         </NavLink>
 
-        <NavLink to="/inadimplencia" className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Inadimplência' : undefined}>
-          <AlertTriangle size={18} className="shrink-0" />
-          {!mini && <span>Inadimplência</span>}
-        </NavLink>
+        {!isVendedor && (
+          <NavLink to="/inadimplencia" className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Inadimplência' : undefined}>
+            <AlertTriangle size={18} className="shrink-0" />
+            {!mini && <span>Inadimplência</span>}
+          </NavLink>
+        )}
 
-        <NavLink to="/demarcacao" className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Demarcação' : undefined}>
-          <Satellite size={18} className="shrink-0" />
-          {!mini && <span>Demarcação</span>}
-        </NavLink>
+        {isAdmin && (
+          <NavLink to="/demarcacao" className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Demarcação' : undefined}>
+            <Satellite size={18} className="shrink-0" />
+            {!mini && <span>Demarcação</span>}
+          </NavLink>
+        )}
 
-        <NavLink to="/relatorios" className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Relatórios' : undefined}>
-          <BarChart3 size={18} className="shrink-0" />
-          {!mini && <span>Relatórios</span>}
-        </NavLink>
+        {!isVendedor && (
+          <NavLink to="/relatorios" className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Relatórios' : undefined}>
+            <BarChart3 size={18} className="shrink-0" />
+            {!mini && <span>Relatórios</span>}
+          </NavLink>
+        )}
 
-        {profile?.role === 'admin' && (
+        {isAdmin && (
           <NavLink to="/configuracoes" className={({ isActive }) => navCls(isActive, mini)} title={mini ? 'Configurações' : undefined}>
             <Settings size={18} className="shrink-0" />
             {!mini && <span>Configurações</span>}

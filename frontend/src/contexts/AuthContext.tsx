@@ -8,6 +8,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   isAdmin: boolean
+  isGerente: boolean
+  isVendedor: boolean
   isFinanceiro: boolean
   isGerencia: boolean
   isProprietario: boolean
@@ -56,10 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       isAdmin: role === 'admin',
+      isGerente: role === 'gerencia',
+      isVendedor: role === 'vendedor',
       isFinanceiro: role === 'financeiro',
       isGerencia: role === 'gerencia',
       isProprietario: role === 'proprietario',
-      canEdit: ['admin', 'gerencia', 'financeiro'].includes(role || ''),
+      canEdit: ['admin', 'gerencia', 'financeiro', 'vendedor'].includes(role || ''),
     }}>
       {children}
     </AuthContext.Provider>

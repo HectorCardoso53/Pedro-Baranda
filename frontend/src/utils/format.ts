@@ -114,8 +114,9 @@ export function statusEfetivoParcela(parcela: { status: string; vencimento?: str
 
 export const ROLE_LABEL: Record<string, string> = {
   admin: 'Administrador',
+  gerencia: 'Gerente',
+  vendedor: 'Vendedor',
   financeiro: 'Financeiro',
   atendimento: 'Atendimento',
-  gerencia: 'Gerência',
   proprietario: 'Proprietário',
 }

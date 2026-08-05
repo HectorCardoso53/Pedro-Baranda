@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'financeiro' | 'atendimento' | 'gerencia' | 'proprietario'
+export type UserRole = 'admin' | 'financeiro' | 'atendimento' | 'gerencia' | 'vendedor' | 'proprietario'
 export type LoteStatus = 'disponivel' | 'reservado' | 'vendido' | 'bloqueado'
 export type VendaStatus = 'ativa' | 'quitada' | 'distratada' | 'cancelada'
 export type ParcelaStatus = 'pendente' | 'paga' | 'vencida' | 'cancelada'

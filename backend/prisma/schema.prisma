@@ -12,6 +12,7 @@ enum RoleUsuario {
   financeiro
   atendimento
   gerencia
+  vendedor
   proprietario
 }
 

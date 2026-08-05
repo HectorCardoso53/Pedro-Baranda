@@ -18,7 +18,7 @@ export default function Configuracoes() {
   const { isAdmin } = useAuth()
   const qc = useQueryClient()
   const [novoUsuarioOpen, setNovoUsuarioOpen] = useState(false)
-  const [form, setForm] = useState({ nome: '', email: '', senha: '', role: 'atendimento', proprietarioId: '' })
+  const [form, setForm] = useState({ nome: '', email: '', senha: '', role: 'gerencia', proprietarioId: '' })
 
   const { data: usuarios = [] } = useQuery({
     queryKey: ['usuarios'],
@@ -124,7 +124,9 @@ export default function Configuracoes() {
               <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Object.entries(ROLE_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  <SelectItem value="gerencia">Gerente</SelectItem>
+                  <SelectItem value="vendedor">Vendedor</SelectItem>
+                  <SelectItem value="proprietario">Proprietário</SelectItem>
                 </SelectContent>
               </Select>
             </div>
