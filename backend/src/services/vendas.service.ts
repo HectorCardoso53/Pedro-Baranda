@@ -42,16 +42,136 @@ export class VendasService {
     return prisma.parcela.findMany({ where: { vendaId }, orderBy: { numero: 'asc' } })
   }
 
-  async atualizar(id: string, data: { observacoes?: string; dataVenda?: string; diaVencimento?: number }) {
+  async atualizar(id: string, data: {
+    observacoes?: string
+    dataVenda?: string
+    diaVencimento?: number
+    clienteId?: string
+    loteId?: string
+    tipo?: string
+    valor?: number
+    entrada?: number
+    numeroParcelas?: number
+    formaEntrada?: string
+  }) {
     await prisma.$transaction(async (tx) => {
+      const venda = await tx.venda.findUnique({ where: { id } })
+      if (!venda) throw Object.assign(new Error('Venda não encontrada'), { statusCode: 404 })
+
       const updateData: Record<string, unknown> = {}
       if (data.observacoes !== undefined) updateData.observacoes = data.observacoes || null
       if (data.dataVenda) updateData.dataVenda = new Date(`${data.dataVenda}T12:00:00.000Z`)
-      if (data.diaVencimento) updateData.diaVencimento = data.diaVencimento
+      if (data.clienteId) {
+        updateData.clienteId = data.clienteId
+        await tx.parcela.updateMany({ where: { vendaId: id }, data: { clienteId: data.clienteId } })
+      }
+      if (data.tipo) updateData.tipo = data.tipo as any
 
-      await tx.venda.update({ where: { id }, data: updateData })
+      // Normal → Reservado: cancela parcelas pendentes e zera financeiro
+      if (data.tipo === 'reservado' && venda.tipo === 'normal') {
+        await tx.parcela.updateMany({
+          where: { vendaId: id, status: { in: ['pendente', 'vencida'] } },
+          data: { status: 'cancelada' },
+        })
+        updateData.numeroParcelas = 0
+        updateData.valorParcela = 0
+        updateData.saldo = 0
+        updateData.valor = 0
+        updateData.entrada = 0
+      }
 
-      if (data.diaVencimento) {
+      // Rastreia lote/projeto/proprietário atuais
+      let currentLoteId = venda.loteId
+      let currentProjetoId = venda.projetoId
+      let currentProprietarioId = venda.proprietarioId
+      const currentClienteId = data.clienteId || venda.clienteId
+
+      // Troca de lote
+      if (data.loteId && data.loteId !== venda.loteId) {
+        const novoLote = await tx.lote.findUnique({ where: { id: data.loteId } })
+        if (!novoLote) throw Object.assign(new Error('Lote não encontrado'), { statusCode: 404 })
+        if (novoLote.status !== 'disponivel' && novoLote.status !== 'reservado') {
+          throw Object.assign(new Error('Lote não disponível'), { statusCode: 409 })
+        }
+        await tx.lote.update({ where: { id: venda.loteId }, data: { status: 'disponivel', vendaId: null } })
+        await tx.lote.update({ where: { id: data.loteId }, data: { status: 'vendido', vendaId: id } })
+        updateData.loteId = data.loteId
+        updateData.projetoId = novoLote.projetoId
+        updateData.quadraId = novoLote.quadraId
+        updateData.proprietarioId = novoLote.proprietarioId
+        currentLoteId = data.loteId
+        currentProjetoId = novoLote.projetoId
+        currentProprietarioId = novoLote.proprietarioId
+        await tx.parcela.updateMany({
+          where: { vendaId: id },
+          data: { loteId: data.loteId, projetoId: novoLote.projetoId, proprietarioId: novoLote.proprietarioId },
+        })
+      }
+
+      // Conversão reservado → normal: gera parcelas
+      const convertendoParaNormal = data.tipo === 'normal' && venda.tipo === 'reservado' && data.valor && data.numeroParcelas
+      if (convertendoParaNormal && data.valor && data.numeroParcelas) {
+        const entrada = data.entrada || 0
+        const saldo = data.valor - entrada
+        const valorParcela = parseFloat((saldo / data.numeroParcelas).toFixed(2))
+        const diaVenc = data.diaVencimento || 10
+        const primeiroVencimento = this.calcularPrimeiroVencimento(diaVenc)
+
+        updateData.valor = data.valor
+        updateData.entrada = entrada
+        updateData.saldo = saldo
+        updateData.numeroParcelas = data.numeroParcelas
+        updateData.valorParcela = valorParcela
+        updateData.diaVencimento = diaVenc
+        updateData.primeiroVencimento = primeiroVencimento
+        if (data.formaEntrada) updateData.formaEntrada = data.formaEntrada
+
+        // Remove parcelas antigas (segurança)
+        const parcelasAntigas = await tx.parcela.findMany({ where: { vendaId: id }, select: { id: true } })
+        if (parcelasAntigas.length > 0) {
+          const ids = parcelasAntigas.map(p => p.id)
+          await tx.pagamento.deleteMany({ where: { parcelaId: { in: ids } } })
+          await tx.promissoria.deleteMany({ where: { parcelaId: { in: ids } } })
+          await tx.parcela.deleteMany({ where: { vendaId: id } })
+        }
+
+        // Gera novas parcelas
+        for (let i = 1; i <= data.numeroParcelas; i++) {
+          const vencimento = addMonths(parseISO(primeiroVencimento), i - 1)
+          await tx.parcela.create({
+            data: {
+              vendaId: id,
+              loteId: currentLoteId,
+              clienteId: currentClienteId,
+              proprietarioId: currentProprietarioId,
+              projetoId: currentProjetoId,
+              numero: i,
+              valor: valorParcela,
+              vencimento: format(vencimento, 'yyyy-MM-dd'),
+              status: 'pendente',
+              juros: 0,
+              multa: 0,
+              desconto: 0,
+            },
+          })
+        }
+
+        if (entrada > 0) {
+          await tx.movimentacaoFinanceira.create({
+            data: {
+              tipo: 'entrada',
+              categoria: 'entrada_venda',
+              descricao: `Entrada - Venda ${id.substring(0, 8)}`,
+              valor: entrada,
+              data: new Date().toISOString().split('T')[0],
+              vendaId: id,
+              proprietarioId: currentProprietarioId,
+              projetoId: currentProjetoId,
+            },
+          })
+        }
+      } else if (data.diaVencimento) {
+        updateData.diaVencimento = data.diaVencimento
         const parcelasPendentes = await tx.parcela.findMany({
           where: { vendaId: id, status: { in: ['pendente', 'vencida'] } },
         })
@@ -61,6 +181,8 @@ export class VendasService {
           await tx.parcela.update({ where: { id: p.id }, data: { vencimento: `${year}-${month}-${dia}` } })
         }
       }
+
+      await tx.venda.update({ where: { id }, data: updateData })
     })
 
     return this.buscar(id)
@@ -83,6 +205,7 @@ export class VendasService {
     loteId: string
     clienteId: string
     vendedorId: string
+    tipo?: string
     valor: number
     entrada: number
     numeroParcelas: number
@@ -96,9 +219,11 @@ export class VendasService {
       throw Object.assign(new Error(`Lote não disponível para venda (status: ${lote.status})`), { statusCode: 409 })
     }
 
-    const saldo = data.valor - data.entrada
-    const valorParcela = parseFloat((saldo / data.numeroParcelas).toFixed(2))
-    const primeiroVencimento = this.calcularPrimeiroVencimento(data.diaVencimento)
+    const tipo = (data.tipo === 'reservado' ? 'reservado' : 'normal') as any
+
+    const saldo = tipo === 'reservado' ? 0 : data.valor - data.entrada
+    const valorParcela = tipo === 'reservado' ? 0 : parseFloat((saldo / data.numeroParcelas).toFixed(2))
+    const primeiroVencimento = tipo === 'reservado' ? null : this.calcularPrimeiroVencimento(data.diaVencimento)
 
     const venda = await prisma.$transaction(async (tx) => {
       const novaVenda = await tx.venda.create({
@@ -109,70 +234,74 @@ export class VendasService {
           projetoId: lote.projetoId,
           quadraId: lote.quadraId,
           vendedorId: data.vendedorId,
-          valor: data.valor,
-          entrada: data.entrada,
+          tipo,
+          valor: tipo === 'reservado' ? 0 : data.valor,
+          entrada: 0,
           saldo,
-          numeroParcelas: data.numeroParcelas,
+          numeroParcelas: tipo === 'reservado' ? 0 : data.numeroParcelas,
           valorParcela,
-          diaVencimento: data.diaVencimento,
-          primeiroVencimento,
-          formaEntrada: data.formaEntrada || null,
+          diaVencimento: tipo === 'reservado' ? 1 : data.diaVencimento,
+          primeiroVencimento: primeiroVencimento ?? undefined,
+          formaEntrada: tipo === 'reservado' ? null : (data.formaEntrada || null),
           dataVenda: new Date(),
           status: 'ativa',
           observacoes: data.observacoes || null,
         },
       })
 
-      // Gerar parcelas
-      const parcelas = []
-      for (let i = 1; i <= data.numeroParcelas; i++) {
-        const vencimento = addMonths(parseISO(primeiroVencimento), i - 1)
-        const parcela = await tx.parcela.create({
-          data: {
-            vendaId: novaVenda.id,
-            loteId: data.loteId,
-            clienteId: data.clienteId,
-            proprietarioId: lote.proprietarioId,
-            projetoId: lote.projetoId,
-            numero: i,
-            valor: valorParcela,
-            vencimento: format(vencimento, 'yyyy-MM-dd'),
-            status: 'pendente',
-            juros: 0,
-            multa: 0,
-            desconto: 0,
-          },
-        })
-        parcelas.push(parcela)
+      const parcelas: any[] = []
+
+      if (tipo === 'normal') {
+        // Gerar parcelas apenas para vendas normais
+        for (let i = 1; i <= data.numeroParcelas; i++) {
+          const vencimento = addMonths(parseISO(primeiroVencimento!), i - 1)
+          const parcela = await tx.parcela.create({
+            data: {
+              vendaId: novaVenda.id,
+              loteId: data.loteId,
+              clienteId: data.clienteId,
+              proprietarioId: lote.proprietarioId,
+              projetoId: lote.projetoId,
+              numero: i,
+              valor: valorParcela,
+              vencimento: format(vencimento, 'yyyy-MM-dd'),
+              status: 'pendente',
+              juros: 0,
+              multa: 0,
+              desconto: 0,
+            },
+          })
+          parcelas.push(parcela)
+        }
+
+        // Registrar entrada como movimentação apenas para vendas normais
+        if (data.entrada > 0) {
+          await tx.movimentacaoFinanceira.create({
+            data: {
+              tipo: 'entrada',
+              categoria: 'entrada_venda',
+              descricao: `Entrada - Venda ${novaVenda.id.substring(0, 8)}`,
+              valor: data.entrada,
+              data: new Date().toISOString().split('T')[0],
+              vendaId: novaVenda.id,
+              proprietarioId: lote.proprietarioId,
+              projetoId: lote.projetoId,
+              registradoPor: data.vendedorId,
+            },
+          })
+        }
       }
 
-      // Atualizar status do lote
+      // Atualizar status do lote para vendido em ambos os casos
       await tx.lote.update({
         where: { id: data.loteId },
         data: { status: 'vendido', vendaId: novaVenda.id },
       })
 
-      // Registrar entrada como movimentação
-      if (data.entrada > 0) {
-        await tx.movimentacaoFinanceira.create({
-          data: {
-            tipo: 'entrada',
-            categoria: 'entrada_venda',
-            descricao: `Entrada - Venda ${novaVenda.id.substring(0, 8)}`,
-            valor: data.entrada,
-            data: new Date().toISOString().split('T')[0],
-            vendaId: novaVenda.id,
-            proprietarioId: lote.proprietarioId,
-            projetoId: lote.projetoId,
-            registradoPor: data.vendedorId,
-          },
-        })
-      }
-
       return { ...novaVenda, parcelas }
     })
 
-    logger.info(`Venda criada: ${venda.id} - Lote: ${data.loteId}`)
+    logger.info(`Venda ${tipo} criada: ${venda.id} - Lote: ${data.loteId}`)
     return venda
   }
 

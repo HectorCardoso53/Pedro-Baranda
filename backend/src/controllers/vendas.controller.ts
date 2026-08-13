@@ -33,11 +33,18 @@ export class VendasController {
   }
 
   async atualizar(req: AuthRequest, res: Response) {
-    const { observacoes, dataVenda, diaVencimento } = req.body
+    const { observacoes, dataVenda, diaVencimento, tipo, clienteId, loteId, valor, entrada, numeroParcelas, formaEntrada } = req.body
     const data = await service.atualizar(req.params.id, {
       observacoes,
       dataVenda,
       diaVencimento: diaVencimento ? Number(diaVencimento) : undefined,
+      tipo,
+      clienteId,
+      loteId,
+      valor: valor !== undefined ? Number(valor) : undefined,
+      entrada: entrada !== undefined ? Number(entrada) : undefined,
+      numeroParcelas: numeroParcelas ? Number(numeroParcelas) : undefined,
+      formaEntrada,
     })
     return successResponse(res, data, 'Venda atualizada com sucesso')
   }

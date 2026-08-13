@@ -118,6 +118,7 @@ export default function VendaDetalhes() {
   if (!venda) return <div className="p-6">Carregando...</div>
 
   const v = venda as any
+  const isReservado = v?.tipo === 'reservado'
   const pagas = (parcelas as any[]).filter((p) => p.status === 'paga').length
   const progresso = parcelas.length > 0 ? (pagas / parcelas.length) * 100 : 0
   const saldoDevedor = (parcelas as any[])
@@ -140,17 +141,24 @@ export default function VendaDetalhes() {
           title={v.cliente?.nome || `Venda #${id?.substring(0, 8)}`}
           description={`Lote ${v.lote?.numero || '-'} — ${v.projeto?.nome || ''}`}
         />
-        <div className="ml-auto">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => gerarReciboVenda.mutate()}
-            disabled={gerarReciboVenda.isPending}
-            className="gap-2"
-          >
-            {gerarReciboVenda.isPending ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />}
-            Recibo de Compra e Venda
-          </Button>
+        <div className="ml-auto flex items-center gap-2">
+          {isReservado && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+              Reservado (pré-sistema)
+            </span>
+          )}
+          {!isReservado && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => gerarReciboVenda.mutate()}
+              disabled={gerarReciboVenda.isPending}
+              className="gap-2"
+            >
+              {gerarReciboVenda.isPending ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />}
+              Recibo de Compra e Venda
+            </Button>
+          )}
         </div>
       </div>
 
@@ -202,7 +210,7 @@ export default function VendaDetalhes() {
             {(v.cliente?.celular || v.cliente?.telefone) && (
               <div>
                 <p className="text-xs text-gray-400">Telefone / Celular</p>
-                <p className="text-sm">📱 {formatPhone(v.cliente.celular || v.cliente.telefone)}</p>
+                <p className="text-sm">{formatPhone(v.cliente.celular || v.cliente.telefone)}</p>
               </div>
             )}
             {v.cliente?.email && (

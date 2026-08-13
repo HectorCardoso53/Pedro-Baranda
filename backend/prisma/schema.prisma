@@ -44,6 +44,11 @@ enum StatusPromissoria {
   cancelada
 }
 
+enum TipoVenda {
+  normal
+  reservado
+}
+
 enum TipoMovimentacao {
   entrada
   saida
@@ -237,6 +242,7 @@ model Venda {
   formaEntrada        String?
   dataVenda           DateTime    @default(now())
   status              StatusVenda @default(ativa)
+  tipo                TipoVenda   @default(normal)
   contratoUrl         String?
   observacoes         String?
   motivoCancelamento  String?
