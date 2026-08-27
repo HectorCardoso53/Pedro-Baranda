@@ -67,8 +67,9 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host ""
 Write-Host "=== Tudo no ar! ===" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Frontend:  http://localhost" -ForegroundColor White
-Write-Host "  Backend:   http://localhost/api" -ForegroundColor White
+Write-Host "  Sistema:   http://localhost:8090" -ForegroundColor Cyan
+Write-Host "  Login:     http://localhost:8090/login" -ForegroundColor Cyan
+Write-Host "  API:       http://localhost:8090/api" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Para ver os logs: docker compose logs -f" -ForegroundColor DarkGray
 Write-Host "Para parar:       docker compose down" -ForegroundColor DarkGray
